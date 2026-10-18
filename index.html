@@ -151,7 +151,6 @@ tr.hl td{background:var(--chip)}
         <div class="chart" id="cchart"></div>
       </div>
       <div class="facts" id="cfit"></div>
-      <p class="note">点線は、表示している期間の終値に当てはめた指数関数の近似曲線です（Excelの指数近似と同じ計算）。対数目盛りでは直線になります。</p>
     </section>
 
     <!-- tab 2: monthly return distribution -->
@@ -166,7 +165,6 @@ tr.hl td{background:var(--chip)}
         <h2>幾何平均から計算したリターン倍率 <span id="msub"></span></h2>
         <div class="tscroll"><table id="mtable"></table></div>
       </div>
-      <p class="note">月次騰落率は、月末の終値（株式分割を調整済み、配当は含まない）から計算しています。今月はまだ月の途中なので統計には含めず、分布図で今いる位置だけを色で示しています。</p>
     </section>
 
     <!-- tab 3: holding period -->
@@ -197,10 +195,9 @@ tr.hl td{background:var(--chip)}
         <h2>データ：年率（CAGR）</h2>
         <div class="tscroll"><table id="htable2"></table></div>
       </div>
-      <p class="note" id="hnote"></p>
     </section>
 
-    <p class="foot">データ：Nasdaq.com（2016年10月より前は Yahoo Finance）。GitHub が米国市場の取引時間中に約15分ごとに更新します。価格は株式分割を調整済みで、配当は含みません。 <a href="https://limelightle-debug.github.io/ndx-heatmap/">Nasdaq 100 を開く</a></p>
+    <p class="foot"><a href="https://limelightle-debug.github.io/ndx-heatmap/">Nasdaq 100 を開く</a></p>
   </div>
   <div class="empty" id="empty">データを読み込んでいます…</div>
 </div>
@@ -265,10 +262,12 @@ function renderStatus(){
 function renderPrice(){
   const last=DAYS[DAYS.length-1];const qt=(D.quotes&&D.quotes.TQQQ)||{};
   const p=qt.price||last.c;const prev={c:qt.prev||DAYS[DAYS.length-2].c};const ch=p/prev.c-1;
-  const when=qt.time&&isNaN(+qt.time)?qt.time+"（米国東部時間）":last.d;
+  const md=x=>`${+x.slice(5,7)}/${+x.slice(8,10)}`;
+  const live=Math.abs(p-last.c)>1e-6;
+  const when=live?`最新値 · 日足は${md(last.d)}まで`:`${md(last.d)}の終値`;
   let ath=0;DAYS.forEach(x=>{if(x.h>ath)ath=x.h});
   $("price").innerHTML=`<div class="p"><small>$</small>${px(p)}</div><div class="chg ${cls(ch)}">${ch>=0?"+":"−"}${Math.abs(p-prev.c).toFixed(2)}（${pct(ch,2)}）</div>
-   <div class="meta">${esc(when)}時点 · 前日終値 $${px(prev.c)} · 上場来高値 $${px(ath)}（${pct(p/ath-1)}）</div>`;
+   <div class="meta">${esc(when)} · 前日終値 $${px(prev.c)} · 上場来高値 $${px(ath)}（${pct(p/ath-1)}）</div>`;
   const q=D.quotes||{};
   $("peers").innerHTML=["QQQ","QLD"].map(s=>{const x=q[s];if(!x||x.price==null)return`<div class="peer"><span class="t">${s}</span><span class="v">—</span></div>`;const c=x.prev?x.price/x.prev-1:null;
     return`<div class="peer"><span class="t">${s}</span><span class="v">$${px(x.price)}</span><span class="c ${cls(c)}">${pct(c,2)}</span></div>`}).join("");
@@ -438,8 +437,6 @@ function renderHold(){
   $("hsub3").textContent="";
   $("htable1").innerHTML=`<thead><tr><th>年</th>${SYMS.map(([s])=>`<th>${s}</th>`).join("")}<th>近似</th></tr></thead><tbody>${xs.map((n,i)=>`<tr${sel===i?' class="hl"':""}><td class="k">${n}年</td>${SYMS.map(([s])=>{const r=S[s].res[i];return`<td>${r.m==null?"—":r.m.toFixed(2)}</td>`}).join("")}<td>${fitVals[i]==null?"—":fitVals[i].toFixed(2)}</td></tr>`).join("")}</tbody>`;
   $("htable2").innerHTML=`<thead><tr><th>年</th>${SYMS.map(([s])=>`<th>${s}</th>`).join("")}</tr></thead><tbody>${xs.map((n,i)=>`<tr${sel===i?' class="hl"':""}><td class="k">${n}年</td>${SYMS.map(([s])=>`<td>${pct(S[s].res[i].cagr)}</td>`).join("")}</tr>`).join("")}</tbody>`;
-  const rng=SYMS.map(([s])=>{const c=S[s].res.map(r=>r.cnt);return`${s} ${S[s].first}〜${S[s].last}年（平均に使った年の数：1年 ${c[0]}、10年 ${c[9]}）`}).join("、");
-  $("hnote").textContent=(lh?"各年の安値と、N年後の年の高値の比を、取れるすべての年について平均しています。買う年は1月初めからデータがある年だけを使っています。":"各年の年末終値と、N年後の年末終値の比を、取れるすべての年について平均しています。")+`価格は株式分割を調整済みで配当は含まず、今年はまだ終わっていないので含めていません。対象：${rng}。年率（CAGR）は、平均倍率を年数で割り戻した値です（倍率^(1/年数) − 1）。`;
 }
 
 /* ---------- render ---------- */
