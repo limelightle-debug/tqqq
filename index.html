@@ -166,7 +166,7 @@ tr.hl td{background:var(--chip)}
         <h2>幾何平均から計算したリターン倍率 <span id="msub"></span></h2>
         <div class="tscroll"><table id="mtable"></table></div>
       </div>
-      <p class="note">月次騰落率は、配当を含めた調整後の月末終値から計算しています。今月はまだ月の途中なので統計には含めず、分布図で今いる位置だけを色で示しています。</p>
+      <p class="note">月次騰落率は、月末の終値（株式分割を調整済み、配当は含まない）から計算しています。今月はまだ月の途中なので統計には含めず、分布図で今いる位置だけを色で示しています。</p>
     </section>
 
     <!-- tab 3: holding period -->
@@ -200,7 +200,7 @@ tr.hl td{background:var(--chip)}
       <p class="note" id="hnote"></p>
     </section>
 
-    <p class="foot">データ：Yahoo Finance（GitHub が米国市場の取引時間中に約15分ごとに更新）。価格は株式分割を調整済み。 <a href="https://limelightle-debug.github.io/ndx-heatmap/">Nasdaq 100 を開く</a></p>
+    <p class="foot">データ：Nasdaq.com（2016年10月より前は Yahoo Finance）。GitHub が米国市場の取引時間中に約15分ごとに更新します。価格は株式分割を調整済みで、配当は含みません。 <a href="https://limelightle-debug.github.io/ndx-heatmap/">Nasdaq 100 を開く</a></p>
   </div>
   <div class="empty" id="empty">データを読み込んでいます…</div>
 </div>
@@ -263,9 +263,9 @@ function renderStatus(){
   $("status").innerHTML=`<span>更新 ${esc(t)}</span><span class="pill ${open?"open":""}"><i></i>${open?"米国市場 取引中":"米国市場 時間外"}</span>${stale?`<span class="pill warn">更新が遅れています</span>`:""}`;
 }
 function renderPrice(){
-  const last=DAYS[DAYS.length-1], prev=DAYS[DAYS.length-2];
-  const p=(D.latest&&D.latest.price)||last.c;const ch=p/prev.c-1;
-  const when=D.latest&&D.latest.time?new Intl.DateTimeFormat("ja-JP",{timeZone:"America/New_York",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}).format(new Date(D.latest.time*1000))+"（米国東部時間）":last.d;
+  const last=DAYS[DAYS.length-1];const qt=(D.quotes&&D.quotes.TQQQ)||{};
+  const p=qt.price||last.c;const prev={c:qt.prev||DAYS[DAYS.length-2].c};const ch=p/prev.c-1;
+  const when=qt.time&&isNaN(+qt.time)?qt.time+"（米国東部時間）":last.d;
   let ath=0;DAYS.forEach(x=>{if(x.h>ath)ath=x.h});
   $("price").innerHTML=`<div class="p"><small>$</small>${px(p)}</div><div class="chg ${cls(ch)}">${ch>=0?"+":"−"}${Math.abs(p-prev.c).toFixed(2)}（${pct(ch,2)}）</div>
    <div class="meta">${esc(when)}時点 · 前日終値 $${px(prev.c)} · 上場来高値 $${px(ath)}（${pct(p/ath-1)}）</div>`;
@@ -439,7 +439,7 @@ function renderHold(){
   $("htable1").innerHTML=`<thead><tr><th>年</th>${SYMS.map(([s])=>`<th>${s}</th>`).join("")}<th>近似</th></tr></thead><tbody>${xs.map((n,i)=>`<tr${sel===i?' class="hl"':""}><td class="k">${n}年</td>${SYMS.map(([s])=>{const r=S[s].res[i];return`<td>${r.m==null?"—":r.m.toFixed(2)}</td>`}).join("")}<td>${fitVals[i]==null?"—":fitVals[i].toFixed(2)}</td></tr>`).join("")}</tbody>`;
   $("htable2").innerHTML=`<thead><tr><th>年</th>${SYMS.map(([s])=>`<th>${s}</th>`).join("")}</tr></thead><tbody>${xs.map((n,i)=>`<tr${sel===i?' class="hl"':""}><td class="k">${n}年</td>${SYMS.map(([s])=>`<td>${pct(S[s].res[i].cagr)}</td>`).join("")}</tr>`).join("")}</tbody>`;
   const rng=SYMS.map(([s])=>{const c=S[s].res.map(r=>r.cnt);return`${s} ${S[s].first}〜${S[s].last}年（平均に使った年の数：1年 ${c[0]}、10年 ${c[9]}）`}).join("、");
-  $("hnote").textContent=(lh?"各年の安値と、N年後の年の高値の比を、取れるすべての年について平均しています。買う年は1月初めからデータがある年だけを使っています。":"各年の年末終値と、N年後の年末終値の比を、取れるすべての年について平均しています。")+`価格は配当込みの調整後の値で、今年はまだ終わっていないので含めていません。対象：${rng}。年率（CAGR）は、平均倍率を年数で割り戻した値です（倍率^(1/年数) − 1）。`;
+  $("hnote").textContent=(lh?"各年の安値と、N年後の年の高値の比を、取れるすべての年について平均しています。買う年は1月初めからデータがある年だけを使っています。":"各年の年末終値と、N年後の年末終値の比を、取れるすべての年について平均しています。")+`価格は株式分割を調整済みで配当は含まず、今年はまだ終わっていないので含めていません。対象：${rng}。年率（CAGR）は、平均倍率を年数で割り戻した値です（倍率^(1/年数) − 1）。`;
 }
 
 /* ---------- render ---------- */

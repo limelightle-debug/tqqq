@@ -1,162 +1,197 @@
-"""Fetch TQQQ, QQQ and QLD prices from Yahoo Finance and write data/tqqq.json.
+"""Update data/tqqq.json with TQQQ, QQQ and QLD prices from the Nasdaq.com data service.
 
-Runs in GitHub Actions. Writes the file only when the data changed.
+Runs in GitHub Actions. Nasdaq.com serves the last ten years of daily prices, so the file
+keeps everything it has ever received and adds the new days on each run. The older history
+(TQQQ from its 2010 listing, QQQ and QLD yearly highs and lows) came with the first version
+of the file. Prices are split-adjusted; dividends are not included.
+Writes the file only when the data changed, and leaves data/status.json with the outcome.
 """
 import json
+import statistics
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import requests
 
-TQQQ_OUT = Path(__file__).resolve().parent.parent / "data" / "tqqq.json"
+DATA = Path(__file__).resolve().parent.parent / "data"
+OUT = DATA / "tqqq.json"
+STATUS = DATA / "status.json"
+SYMBOLS = ("TQQQ", "QQQ", "QLD")
+NY = ZoneInfo("America/New_York")
+
 session = requests.Session()
 session.headers.update({
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
                   "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
     "Accept-Language": "en-US,en;q=0.9",
+    "Origin": "https://www.nasdaq.com",
+    "Referer": "https://www.nasdaq.com/",
 })
 
 
 def sig(x, n=5):
-    """Round to n significant digits (keeps the JSON small)."""
-    if x is None:
-        return None
     return float(f"{x:.{n}g}")
 
 
-CRUMB = None
+def num(s):
+    return float(str(s).replace("$", "").replace(",", "").strip())
 
 
-def yahoo_crumb():
-    """Yahoo answers cloud servers more reliably with its consent cookie and a crumb token."""
-    global CRUMB
-    if CRUMB is not None:
-        return CRUMB
-    CRUMB = ""
-    try:
-        session.get("https://fc.yahoo.com", timeout=15, allow_redirects=True)
-    except requests.RequestException:
-        pass
-    try:
-        r = session.get("https://query1.finance.yahoo.com/v1/test/getcrumb", timeout=15)
-        if r.status_code == 200 and r.text and "<" not in r.text and len(r.text) < 40:
-            CRUMB = r.text.strip()
-    except requests.RequestException:
-        pass
-    print(f"yahoo crumb: {'yes' if CRUMB else 'no'}")
-    return CRUMB
-
-
-def yahoo_daily(symbol):
-    """Full daily history from Yahoo Finance: split-adjusted OHLC plus dividend-adjusted close."""
-    now = int(time.time())
+def get_json(url):
     last = None
-    crumb = yahoo_crumb()
-    for attempt, host in enumerate(("query1", "query2", "query1", "query2")):
+    for attempt in range(4):
         if attempt:
             time.sleep(5 * attempt)
         try:
-            url = (f"https://{host}.finance.yahoo.com/v8/finance/chart/{symbol}"
-                   f"?period1=0&period2={now}&interval=1d&events=div%2Csplit")
-            if crumb:
-                url += f"&crumb={crumb}"
             r = session.get(url, timeout=30)
-            if r.status_code != 200:
-                last = f"HTTP {r.status_code} from {host}: {r.text[:120]!r}"
-                print(f"{symbol}: {last}")
-                continue
-            res = r.json()["chart"]["result"][0]
-            q = res["indicators"]["quote"][0]
-            adj = res["indicators"]["adjclose"][0]["adjclose"]
-            rows = []
-            for i, ts in enumerate(res["timestamp"]):
-                o, h, l, c, a = q["open"][i], q["high"][i], q["low"][i], q["close"][i], adj[i]
-                if None in (o, h, l, c, a):
-                    continue
-                d = datetime.fromtimestamp(ts, ZoneInfo("America/New_York")).strftime("%Y%m%d")
-                rows.append([int(d), o, h, l, c, a])
-            if len(rows) < 1000:
-                raise RuntimeError(f"{symbol}: only {len(rows)} days")
-            return rows, res.get("meta", {})
-        except (requests.RequestException, KeyError, IndexError, TypeError, ValueError) as e:
+            if r.status_code == 200:
+                return r.json()
+            last = f"HTTP {r.status_code}: {r.text[:120]!r}"
+        except (requests.RequestException, ValueError) as e:
             last = f"{type(e).__name__}: {e}"
-            print(f"{symbol}: {last}")
-    raise RuntimeError(f"yahoo {symbol}: {last}")
+        print(f"{url.split('?')[0]}: {last}")
+    raise RuntimeError(f"{url.split('?')[0]}: {last}")
 
 
-def yearly_table(rows):
-    """Per calendar year: dividend-adjusted low, high and year-end close; 'full' = data from the first January days."""
-    out = {}
-    for d, o, h, l, c, a in rows:
-        y = d // 10000
-        f = a / c
-        e = out.setdefault(y, {"lo": l * f, "hi": h * f, "end": a, "first": d})
-        e["lo"] = min(e["lo"], l * f)
-        e["hi"] = max(e["hi"], h * f)
-        e["end"] = a
-    return {str(y): {"lo": sig(v["lo"]), "hi": sig(v["hi"]), "end": sig(v["end"]),
-                     "full": v["first"] % 10000 <= 110} for y, v in sorted(out.items())}
-
-
-def quote(rows, meta):
-    """Latest price and the previous day's close (for the day change)."""
-    return {"price": sig(meta.get("regularMarketPrice") or rows[-1][4], 6),
-            "prev": sig(rows[-2][4], 6), "date": rows[-1][0]}
-
-
-def update_tqqq():
-    tq, meta = yahoo_daily("TQQQ")
-    years = {"TQQQ": yearly_table(tq)}
-    quotes = {"TQQQ": quote(tq, meta)}
-    for sym in ("QQQ", "QLD"):
-        time.sleep(1)
-        rows, m = yahoo_daily(sym)
-        years[sym] = yearly_table(rows)
-        quotes[sym] = quote(rows, m)
-    data = {
-        "source": "Yahoo Finance",
-        "latest": {
-            "price": meta.get("regularMarketPrice"),
-            "time": meta.get("regularMarketTime"),
-            "high": meta.get("regularMarketDayHigh"),
-            "low": meta.get("regularMarketDayLow"),
-        },
-        # [yyyymmdd, open, high, low, close, adjusted close]; prices are split-adjusted
-        "quotes": quotes,
-        "daily": [[d, sig(o), sig(h), sig(l), sig(c), sig(a)] for d, o, h, l, c, a in tq],
-        "years": years,
-    }
-    old = TQQQ_OUT.read_text(encoding="utf-8") if TQQQ_OUT.exists() else ""
-    body = json.dumps(data, separators=(",", ":"))
-    if old:
+def nasdaq_daily(symbol):
+    """Daily [yyyymmdd, open, high, low, close] for about the last ten years, oldest first."""
+    today = datetime.now(NY).date()
+    start = today - timedelta(days=3700)
+    j = get_json(f"https://api.nasdaq.com/api/quote/{symbol}/historical?assetclass=etf"
+                 f"&fromdate={start}&todate={today}&limit=10000")
+    rows = []
+    for r in (j.get("data") or {}).get("tradesTable", {}).get("rows") or []:
         try:
-            prev = json.loads(old)
-            prev.pop("updatedAt", None)
-            if json.dumps(prev, separators=(",", ":")) == body:
-                print("tqqq: no change")
-                return
-        except ValueError:
-            pass
+            m, d, y = r["date"].split("/")
+            rows.append([int(f"{y}{m}{d}"), num(r["open"]), num(r["high"]), num(r["low"]), num(r["close"])])
+        except (KeyError, ValueError):
+            continue
+    rows.sort()
+    if len(rows) < 500:
+        raise RuntimeError(f"{symbol}: only {len(rows)} days from Nasdaq")
+    return rows
+
+
+def nasdaq_quote(symbol):
+    j = get_json(f"https://api.nasdaq.com/api/quote/{symbol}/info?assetclass=etf")
+    p = (j.get("data") or {}).get("primaryData") or {}
+    price = num(p["lastSalePrice"])
+    chg = num(p.get("netChange") or 0)
+    return {"price": sig(price, 6), "prev": sig(price - chg, 6), "time": p.get("lastTradeTimestamp")}
+
+
+def year_stats(rows):
+    out = {}
+    for d, o, h, l, c in rows:
+        y = str(d // 10000)
+        e = out.setdefault(y, {"lo": l, "hi": h, "end": c, "first": d, "last": d})
+        e["lo"], e["hi"] = min(e["lo"], l), max(e["hi"], h)
+        if d >= e["last"]:
+            e["end"], e["last"] = c, d
+        e["first"] = min(e["first"], d)
+    return out
+
+
+def merge_years(old, new):
+    out = {y: dict(v) for y, v in old.items()}
+    for y, n in new.items():
+        o = out.get(y)
+        if o is None:
+            out[y] = dict(n)
+            continue
+        o["lo"], o["hi"] = min(o["lo"], n["lo"]), max(o["hi"], n["hi"])
+        o["first"] = min(o["first"], n["first"])
+        if n["last"] >= o["last"]:
+            o["end"], o["last"] = n["end"], n["last"]
+    return out
+
+
+def scale_years(years, f):
+    for v in years.values():
+        for k in ("lo", "hi", "end"):
+            v[k] *= f
+
+
+def split_factor(old_by_date, new_rows):
+    """If the source re-based its history for a split, old stored prices need the same factor."""
+    ratios = [r[4] / old_by_date[r[0]] for r in new_rows[:-5] if old_by_date.get(r[0])]
+    if len(ratios) < 5:
+        return 1.0
+    f = statistics.median(ratios)
+    return f if abs(f - 1) > 0.02 else 1.0
+
+
+def update():
+    store = json.loads(OUT.read_text(encoding="utf-8"))
+    daily = {r[0]: r[1:5] for r in store["daily"]}
+    years = {s: {y: {k: v[k] for k in ("lo", "hi", "end", "first", "last")} for y, v in store["years"][s].items()}
+             for s in SYMBOLS}
+
+    quotes = {}
+    for s in SYMBOLS:
+        rows = nasdaq_daily(s)
+        time.sleep(1)
+        if s == "TQQQ":
+            f = split_factor({d: v[3] for d, v in daily.items()}, rows)
+            if f != 1.0:
+                print(f"TQQQ: rescaling stored history by {f:.4f}")
+                daily = {d: [x * f for x in v] for d, v in daily.items()}
+            for d, o, h, l, c in rows:
+                daily[d] = [o, h, l, c]
+            years[s] = year_stats([[d, *v] for d, v in sorted(daily.items())])
+        else:
+            new = year_stats(rows)
+            done = [y for y in new if y in years[s] and new[y]["first"] % 10000 <= 110
+                    and years[s][y]["first"] % 10000 <= 110 and new[y]["last"] % 10000 >= 1224
+                    and years[s][y]["last"] % 10000 >= 1224]
+            if done:
+                f = statistics.median(new[y]["end"] / years[s][y]["end"] for y in done)
+                if abs(f - 1) > 0.02:
+                    print(f"{s}: rescaling stored years by {f:.4f}")
+                    scale_years(years[s], f)
+            years[s] = merge_years(years[s], new)
+        try:
+            quotes[s] = nasdaq_quote(s)
+        except RuntimeError as e:  # the day's last close is a fine fallback
+            print(f"warning: quote {s}: {e}", file=sys.stderr)
+            last = rows[-1]
+            quotes[s] = {"price": last[4], "prev": rows[-2][4], "time": str(last[0])}
+        time.sleep(1)
+
+    out_rows = [[d, sig(o), sig(h), sig(l), sig(c), sig(c)] for d, (o, h, l, c) in sorted(daily.items())]
+    out_years = {s: {y: {"lo": sig(v["lo"]), "hi": sig(v["hi"]), "end": sig(v["end"]),
+                         "first": v["first"], "last": v["last"], "full": v["first"] % 10000 <= 110}
+                     for y, v in sorted(years[s].items())} for s in SYMBOLS}
+    data = {
+        "source": "Nasdaq.com（2016年10月より前は Yahoo Finance）",
+        "quotes": quotes,
+        "latest": {"price": quotes["TQQQ"]["price"]},
+        "daily": out_rows,
+        "years": out_years,
+    }
+    prev = dict(store)
+    prev.pop("updatedAt", None)
+    if json.dumps(prev, sort_keys=True) == json.dumps(data, sort_keys=True):
+        print("no change")
+        return
     data = {"updatedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), **data}
-    TQQQ_OUT.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
-    print(f"tqqq: {len(tq)} days, last {tq[-1][0]} close {tq[-1][4]:.2f}")
+    OUT.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    print(f"updated: {len(out_rows)} days, last {out_rows[-1][0]} close {out_rows[-1][4]}, "
+          f"TQQQ {quotes['TQQQ']['price']}")
 
 
 if __name__ == "__main__":
-    TQQQ_OUT.parent.mkdir(exist_ok=True)
-    status = TQQQ_OUT.parent / "status.json"
     try:
-        update_tqqq()
+        update()
         result = {"ok": True}
     except Exception as e:  # leave the reason in the repo so it can be read without signing in
-        print(f"error: {e}", file=sys.stderr)
+        print(f"error: {type(e).__name__}: {e}", file=sys.stderr)
         result = {"ok": False, "error": f"{type(e).__name__}: {e}"[:500],
                   "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
-    old = json.loads(status.read_text(encoding="utf-8")) if status.exists() else None
-    if result["ok"] and old == {"ok": True}:
-        pass
-    else:
-        status.write_text(json.dumps(result, ensure_ascii=False) + "\n", encoding="utf-8")
+    old = json.loads(STATUS.read_text(encoding="utf-8")) if STATUS.exists() else None
+    if old != result:
+        STATUS.write_text(json.dumps(result, ensure_ascii=False) + "\n", encoding="utf-8")
