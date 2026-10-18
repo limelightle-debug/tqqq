@@ -20,7 +20,7 @@
 :root{
   --bg:#0f1114; --panel:#171a1f; --ink:#eef0f2; --ink2:#b9bfc8; --muted:#848c97; --line:#2a2f37; --accent:#5ea4ff;
   --up:#2db069; --down:#ea4a51; --chip:#22262d; --shade:rgba(0,0,0,.35);
-  --s-tqqq:#f07aa8; --s-qld:#4fb35c; --s-qqq:#9a7fd6; --s-hist:#f07aa8;
+  --s-tqqq:#f07aa8; --s-qld:#4fb35c; --s-qqq:#9a7fd6; --s-hist:#f07aa8; --s-hist-neg:#a8456e;
   --f-tick:"Archivo","Helvetica Neue",Arial,sans-serif;
   --f-body:"LINE Seed JP","Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;
   color-scheme:dark;
@@ -84,7 +84,9 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .fact .v{font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size:22px;line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap}
 .fact .s{font-size:11.5px;color:var(--ink2)}
 .fact.wide{grid-column:1/-1}
-#cfit{grid-template-columns:repeat(3,minmax(0,1fr))}
+#cfit,#kfacts{grid-template-columns:repeat(3,minmax(0,1fr))}
+#kfacts .v{font-size:20px}
+td small{display:block;font-family:var(--f-body);font-stretch:100%;font-size:10.5px;color:var(--muted);font-weight:700}
 .fact .v.eq{font-size:18px;white-space:normal}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin:2px 2px 6px}
 .legend i{display:inline-block;width:16px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
@@ -165,6 +167,14 @@ tr.hl td{background:var(--chip)}
         <h2>幾何平均から計算したリターン倍率 <span id="msub"></span></h2>
         <div class="tscroll"><table id="mtable"></table></div>
       </div>
+      <div class="panel">
+        <h2>ケリー基準 <span id="ksub"></span></h2>
+        <div class="facts" id="kfacts" style="margin-top:0"></div>
+        <h2 style="margin-top:14px">実効露出と成長率</h2>
+        <div class="tscroll"><table id="ktable"></table></div>
+        <div class="readout" id="kread" style="margin-top:10px"></div>
+        <div class="chart" id="kchart"></div>
+      </div>
     </section>
 
     <!-- tab 3: holding period -->
@@ -209,7 +219,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"
 const store={get(k,d){try{const v=localStorage.getItem("tqqq."+k);return v==null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem("tqqq."+k,v)}catch(e){}}};
 const RANGES={d:[["3M","3ヶ月",63],["6M","6ヶ月",126],["1Y","1年",252],["2Y","2年",504]],w:[["1Y","1年",52],["2Y","2年",104],["5Y","5年",260],["ALL","全期間",0]],m:[["5Y","5年",60],["10Y","10年",120],["ALL","全期間",0]]};
 const DEF_RANGE={d:"6M",w:"2Y",m:"ALL"};
-const state={tab:store.get("tab","chart"),tf:store.get("tf","d"),sc:store.get("sc","lin"),range:{d:store.get("r_d",DEF_RANGE.d),w:store.get("r_w",DEF_RANGE.w),m:store.get("r_m",DEF_RANGE.m)},hm:store.get("hm","lh"),ci:null,di:null,hi:null};
+const state={tab:store.get("tab","chart"),tf:store.get("tf","d"),sc:store.get("sc","lin"),range:{d:store.get("r_d",DEF_RANGE.d),w:store.get("r_w",DEF_RANGE.w),m:store.get("r_m",DEF_RANGE.m)},hm:store.get("hm","lh"),ci:null,di:null,hi:null,ki:null};
 if(!["chart","dist","hold"].includes(state.tab))state.tab="chart";
 if(!RANGES[state.tf])state.tf="d";
 let D=null, DAYS=[], C={};
@@ -247,7 +257,7 @@ const pctAbs=(v,d=1)=>v==null||!isFinite(v)?"—":(v<0?"−":"")+Math.abs(v*100)
 const mult=v=>v==null||!isFinite(v)?"—":(v>=100?v.toFixed(0):v>=10?v.toFixed(1):v.toFixed(2))+"倍";
 const px=v=>v==null?"—":v>=100?v.toFixed(1):v>=1?v.toFixed(2):v.toFixed(3);
 const cls=v=>v>0?"pos":v<0?"neg":"";
-function readColors(){const cs=getComputedStyle(document.documentElement);const g=n=>cs.getPropertyValue(n).trim();C={up:g("--up"),down:g("--down"),ink:g("--ink"),muted:g("--muted"),tqqq:g("--s-tqqq"),qld:g("--s-qld"),qqq:g("--s-qqq"),hist:g("--s-hist"),chip:g("--chip")}}
+function readColors(){const cs=getComputedStyle(document.documentElement);const g=n=>cs.getPropertyValue(n).trim();C={up:g("--up"),down:g("--down"),ink:g("--ink"),muted:g("--muted"),tqqq:g("--s-tqqq"),qld:g("--s-qld"),qqq:g("--s-qqq"),hist:g("--s-hist"),histNeg:g("--s-hist-neg"),chip:g("--chip")}}
 
 /* ---------- market status ---------- */
 function nyParts(date){const f=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",weekday:"short",hour:"numeric",minute:"numeric",hour12:false}).formatToParts(date);const o={};f.forEach(p=>o[p.type]=p.value);return{wd:o.weekday,min:(+o.hour%24)*60+(+o.minute)}}
@@ -361,19 +371,61 @@ function renderDist(){
   bins.forEach((b,i)=>{const xx=ML+i*band;const v=Math.round(b.lo*1000)/10;if(v%lstep===0)g+=`<text class="ax" x="${xx}" y="${H-6}" text-anchor="middle">${v>0?"+":""}${v}%</text><line class="grid" x1="${xx}" x2="${xx}" y1="${MT+PH}" y2="${MT+PH+4}"/>`;
     if(b.lo===0)g+=`<line x1="${xx}" x2="${xx}" y1="${MT}" y2="${MT+PH}" stroke="${C.muted}" stroke-dasharray="2 3"/>`});
   let bars="";bins.forEach((b,i)=>{const xx=ML+i*band+(band-bw)/2;const hb=y(0)-y(b.c);const isCur=i===curBin;const sel=state.di===i;
-    const col=isCur?C.ink:C.hist;
+    const col=isCur?C.ink:b.lo<0?C.histNeg:C.hist;
     if(b.c)bars+=`<rect x="${xx.toFixed(1)}" y="${y(b.c).toFixed(1)}" width="${bw.toFixed(1)}" height="${hb.toFixed(1)}" rx="1.5" fill="${col}" opacity="${sel||state.di==null?1:.45}"/>`;
     if(b.c&&band>=11)bars+=`<text class="ax" x="${(xx+bw/2).toFixed(1)}" y="${(y(b.c)-3).toFixed(1)}" text-anchor="middle">${b.c}</text>`;
     if(isCur)bars+=`<path d="M${(xx+bw/2).toFixed(1)} ${(y(b.c)-(b.c&&band>=11?14:4)).toFixed(1)} l-5 -7 h10 z" fill="${C.ink}"/>`});
-  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="TQQQの月次騰落率の分布">${g}${bars}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
+  const gx=ML+((geo-b0*w)/w)*band;
+  const gl=`<line x1="${gx.toFixed(1)}" x2="${gx.toFixed(1)}" y1="${MT}" y2="${MT+PH}" stroke="${C.ink}" stroke-width="1.5" stroke-dasharray="5 3"/><text class="ax" x="${(gx+5).toFixed(1)}" y="${MT+9}" style="fill:var(--ink);font-weight:700">幾何平均 ${pct(geo,2)}</text>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="TQQQの月次騰落率の分布">${g}${bars}${gl}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
   el._geo={ML,PW,n:bins.length,bins};
   const show=state.di!=null&&bins[state.di]?bins[state.di]:null;
   $("dread").innerHTML=show?`<b>${pct(show.lo)} 〜 ${pct(show.hi)}</b>　${show.c}ヶ月${show.ms.length?"："+show.ms.slice(-6).map(m=>m.k.replace("-","/")).join("、")+(show.ms.length>6?" ほか":""):""}`
     :cur?`<b>今月（${cur.k.replace("-","/")}、途中）</b>　${pct(cur.r)}　▼の棒に入っています`:"棒をタップすると、その範囲に入った月が出ます";
+  renderKelly(rs);
   // multiples
   const ys=[1,5,10,15,20];
   $("msub").textContent=`月次 ${pct(geo,2)}（年率 ${pct((1+geo)**12-1)}）の複利`;
   $("mtable").innerHTML=`<thead><tr><th>保有期間</th><th>倍率</th><th>計算式</th></tr></thead><tbody>${ys.map(k=>`<tr><td class="k">${k}年</td><td>${mult((1+geo)**(12*k))}</td><td class="k">(1${geo<0?"−":"+"}${Math.abs(geo*100).toFixed(2)}%)<sup>${12*k}</sup></td></tr>`).join("")}</tbody>`;
+}
+
+/* ---------- Kelly ---------- */
+// Expected log growth per month with a fraction f of capital in TQQQ, rebalanced monthly, over the historical months.
+const kGrowth=(rs,f)=>{let s=0;for(const r of rs){const x=1+f*r;if(x<=0)return -Infinity;s+=Math.log(x)}return s/rs.length};
+const LEV=3; // TQQQ: 3x Nasdaq-100
+function renderKelly(rs){
+  const n=rs.length, wins=rs.filter(r=>r>0), loss=rs.filter(r=>r<=0);
+  const p=wins.length/n, aw=d3.mean(wins)||0, al=-(d3.mean(loss)||0), worst=d3.min(rs);
+  // allocation from 0% upward in 0.01% steps; the optimum is where expected log growth peaks
+  let best=0,bg=-Infinity;
+  for(let k=0;k<=100000;k++){const f=k/10000,g=kGrowth(rs,f);if(!isFinite(g))break;if(g>bg){bg=g;best=f}}
+  const ann=f=>Math.exp(12*kGrowth(rs,f))-1, half=best/2, x=v=>(v*LEV).toFixed(2)+"倍";
+  $("ksub").textContent=`${rs.length}ヶ月`;
+  $("kfacts").innerHTML=`<div class="fact"><div class="l">勝率</div><div class="v">${(p*100).toFixed(2)}%</div><div class="s">${wins.length} / ${n}ヶ月</div></div>
+   <div class="fact"><div class="l">平均勝ち幅</div><div class="v pos">${(aw*100).toFixed(2)}%</div></div>
+   <div class="fact"><div class="l">平均負け幅</div><div class="v neg">${(al*100).toFixed(2)}%</div></div>
+   <div class="fact"><div class="l">ケリー最適</div><div class="v">${(best*100).toFixed(1)}%</div><div class="s">対Nasdaq100 ${x(best)}</div></div>
+   <div class="fact"><div class="l">ハーフケリー</div><div class="v">${(half*100).toFixed(1)}%</div><div class="s">対Nasdaq100 ${x(half)}</div></div>
+   <div class="fact"><div class="l">TQQQ最悪の月</div><div class="v neg">${(worst*100).toFixed(1)}%</div></div>`;
+  const rows=[[.5,""],[2/3,""],[half,"ハーフケリー"],[1,""],[best,"ケリー最適"]].sort((a,b)=>a[0]-b[0]);
+  $("ktable").innerHTML=`<thead><tr><th>対Nasdaq100</th><th>TQQQ比率</th><th>年率成長</th><th>最悪の月</th></tr></thead><tbody>${rows.map(([f,l])=>`<tr${l?' class="hl"':""}><td>${x(f)}${l?`<small>${l}</small>`:""}</td><td>${(f*100).toFixed(1)}%</td><td>${pct(ann(f))}</td><td>${pct(f*worst)}</td></tr>`).join("")}</tbody>`;
+  // curve: growth against Nasdaq-100 exposure
+  const el=$("kchart");const W=Math.max(300,el.clientWidth), H=Math.round(Math.min(300,W*.68));
+  const ML=44,MR=10,MT=10,MB=26, PW=W-ML-MR, PH=H-MT-MB;
+  const fmax=Math.min(best*1.6,1/Math.abs(worst)-.005);
+  const pts=[];for(let f=0;f<=fmax+1e-9;f+=fmax/200){const g=kGrowth(rs,f);if(isFinite(g))pts.push([f,Math.exp(12*g)-1])}
+  const X=d3.scaleLinear().domain([0,fmax*LEV]).range([ML,ML+PW]);
+  const Y=d3.scaleLinear().domain([Math.min(0,d3.min(pts,q=>q[1])),d3.max(pts,q=>q[1])]).nice().range([MT+PH,MT]);
+  let g="";Y.ticks(5).forEach(v=>{g+=`<line class="grid" x1="${ML}" x2="${ML+PW}" y1="${Y(v)}" y2="${Y(v)}"/><text class="ax" x="${ML-6}" y="${Y(v)+4}" text-anchor="end">${Math.round(v*100)}%</text>`});
+  X.ticks(6).forEach(v=>{g+=`<text class="ax" x="${X(v)}" y="${H-8}" text-anchor="middle">${v}倍</text>`});
+  const line=`<path d="${pts.map((q,i)=>(i?"L":"M")+X(q[0]*LEV).toFixed(1)+" "+Y(q[1]).toFixed(1)).join("")}" fill="none" stroke="${C.tqqq}" stroke-width="2.2"/>`;
+  const mark=(f,lab,ty)=>`<line class="xh" x1="${X(f*LEV)}" x2="${X(f*LEV)}" y1="${MT}" y2="${MT+PH}"/><circle cx="${X(f*LEV)}" cy="${Y(ann(f))}" r="4" fill="${C.tqqq}" stroke="var(--panel)" stroke-width="1.5"/><text class="ax" x="${X(f*LEV)+4}" y="${ty}" style="fill:var(--ink2);font-weight:700">${lab}</text>`;
+  let mk=mark(half,"ハーフ",MT+10)+mark(best,"ケリー",MT+10);if(Math.abs(best-1)>.1&&Math.abs(half-1)>.1)mk+=mark(1,"3倍",MT+PH-6);
+  const sel=state.ki;let xh="";if(sel!=null&&pts[sel])xh=`<line class="xh" x1="${X(pts[sel][0]*LEV)}" x2="${X(pts[sel][0]*LEV)}" y1="${MT}" y2="${MT+PH}" style="stroke:var(--ink)"/>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="実効露出と年率成長">${g}${line}${mk}${xh}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
+  el._geo={ML,PW,n:pts.length,step:true};
+  const q=sel!=null&&pts[sel]?pts[sel]:[best,ann(best)];
+  $("kread").innerHTML=`対Nasdaq100 <b>${x(q[0])}</b>（TQQQ ${(q[0]*100).toFixed(1)}%）　年率成長 <b>${pct(q[1])}</b>　最悪の月 <b>${pct(q[0]*worst)}</b>`;
 }
 
 /* ---------- tab 3: holding period ---------- */
@@ -496,6 +548,7 @@ function scrub(el,onIndex,onLeave){
 }
 scrub($("cchart"),i=>{if(i!==state.ci){state.ci=i;renderCandles()}},()=>{state.ci=null;renderCandles()});
 scrub($("dchart"),i=>{if(i!==state.di){state.di=i;renderDist()}},()=>{state.di=null;renderDist()});
+scrub($("kchart"),i=>{if(i!==state.ki){state.ki=i;renderDist()}},()=>{state.ki=null;renderDist()});
 scrub($("hchart1"),i=>{if(i!==state.hi){state.hi=i;renderHold()}},()=>{state.hi=null;renderHold()});
 scrub($("hchart2"),i=>{if(i!==state.hi){state.hi=i;renderHold()}},()=>{state.hi=null;renderHold()});
 let rt;new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(()=>{if(D)renderTab()},80)}).observe($("app"));
