@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TQQQ</title>
+<meta name="description" content="TQQQのチャート、月次騰落率の分布、保有年数別のリターン">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="TQQQ">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f1114">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=LINE+Seed+JP:wght@400;700;800&display=swap">
+<style>
+:root{
+  --bg:#0f1114; --panel:#171a1f; --ink:#eef0f2; --ink2:#b9bfc8; --muted:#848c97; --line:#2a2f37; --accent:#5ea4ff;
+  --up:#2db069; --down:#ea4a51; --chip:#22262d; --shade:rgba(0,0,0,.35);
+  --s-tqqq:#f07aa8; --s-qld:#4fb35c; --s-qqq:#9a7fd6; --s-hist:#f07aa8;
+  --f-tick:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"LINE Seed JP","Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+.wrap{max-width:1000px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(40px + env(safe-area-inset-bottom,0px))}
+[hidden]{display:none!important}
+.num{font-family:var(--f-tick);font-stretch:82%;font-variant-numeric:tabular-nums}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);padding-block:12px 10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.titlerow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.avatar{width:42px;height:42px;border-radius:10px;flex:none;box-shadow:0 0 0 1px var(--line)}
+h1{margin:0;font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size:26px;letter-spacing:.02em;line-height:1.1}
+.status{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--chip);color:var(--ink2)}
+.pill i{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.pill.open i{background:var(--up)}
+.pill.warn{color:var(--down)}
+.refresh{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);width:40px;height:40px;border-radius:50%;font-size:19px;line-height:1;cursor:pointer;flex:none}
+.refresh.spin{animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.seg{display:flex;background:var(--chip);border-radius:8px;padding:3px;gap:2px;overflow-x:auto;max-width:100%;scrollbar-width:none}
+.seg::-webkit-scrollbar{display:none}
+.seg button{appearance:none;border:0;background:transparent;color:var(--ink2);font:500 13px/1 var(--f-body);padding:8px 11px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px var(--shade);font-weight:700}
+.seg.sm button{padding:7px 9px;font-size:12.5px}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+.price{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-top:14px}
+.price .p{font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size:44px;line-height:1;font-variant-numeric:tabular-nums}
+.price .p small{font-size:20px;font-weight:600;color:var(--ink2);margin-right:2px}
+.price .chg{font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
+.price .meta{font-size:12px;color:var(--muted);width:100%}
+.peers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.peer{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.peer .t{font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size:15px;color:var(--ink2)}
+.peer .v{font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
+.peer .c{font-family:var(--f-tick);font-stretch:82%;font-size:13px;font-variant-numeric:tabular-nums}
+.pos{color:var(--up)} .neg{color:var(--down)}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0;margin-top:12px}
+.panel h2{margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.04em;color:var(--ink2);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.panel h2 span{font-weight:400;color:var(--muted);letter-spacing:0}
+.tabctl{margin-top:14px}
+.ctlrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.readout{font-size:12px;color:var(--ink2);min-height:18px;margin:6px 2px 2px;font-variant-numeric:tabular-nums}
+.readout b{font-family:var(--f-tick);font-stretch:82%;color:var(--ink);font-size:13px}
+.chart{position:relative;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.ax{font-family:var(--f-tick);font-stretch:82%;font-size:11px;fill:var(--muted)}
+.grid{stroke:var(--line);stroke-width:1}
+.xh{stroke:var(--ink2);stroke-width:1;stroke-dasharray:3 3}
+.fit{fill:none;stroke:var(--ink);stroke-width:1.6;stroke-dasharray:6 4;opacity:.8}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:10px}
+.fact{background:var(--panel);padding:10px 12px;min-width:0}
+.fact .l{font-size:11.5px;color:var(--muted);letter-spacing:.03em}
+.fact .v{font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size:22px;line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fact .s{font-size:11.5px;color:var(--ink2)}
+.fact.wide{grid-column:1/-1}
+#cfit{grid-template-columns:repeat(3,minmax(0,1fr))}
+.fact .v.eq{font-size:18px;white-space:normal}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin:2px 2px 6px}
+.legend i{display:inline-block;width:16px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+.legend i.dash{background:none!important;border-top:2px dashed var(--ink);height:0}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:7px 6px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11.5px;font-weight:700;color:var(--muted);background:var(--panel)}
+th:first-child,td:first-child{text-align:left}
+td{font-family:var(--f-tick);font-stretch:82%;font-size:14px}
+td.k{font-family:var(--f-body);font-stretch:100%;font-size:13px;color:var(--ink2)}
+tr.hl td{background:var(--chip)}
+.tscroll{overflow-x:auto}
+.note{font-size:11.5px;color:var(--muted);margin:8px 2px 0;line-height:1.7}
+.eq{font-family:var(--f-tick);font-stretch:90%;font-size:13px;color:var(--ink)}
+.empty{padding:50px 16px;text-align:center;color:var(--muted);font-size:13px;line-height:1.8}
+.foot{margin-top:18px;font-size:11.5px;color:var(--muted);line-height:1.7}
+.foot a{color:var(--accent)}
+@media (max-width:420px){.price .p{font-size:40px}.seg button{padding:8px 9px;font-size:12.5px}}
+@media (prefers-reduced-motion:reduce){.refresh.spin{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar">
+    <div class="titlerow">
+      <div class="brand">
+        <img class="avatar" src="icons/avatar.png" alt="" width="42" height="42">
+        <div style="min-width:0">
+          <h1>TQQQ</h1>
+          <div class="status" id="status">読み込み中…</div>
+        </div>
+      </div>
+      <button type="button" class="refresh" id="refresh" aria-label="最新データに更新">↻</button>
+    </div>
+    <div class="controls">
+      <div class="seg" id="tabs" role="group" aria-label="表示">
+        <button type="button" data-tab="chart">チャート</button>
+        <button type="button" data-tab="dist">分布</button>
+        <button type="button" data-tab="hold">リターン</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="app" hidden>
+    <div class="price" id="price"></div>
+    <div class="peers" id="peers"></div>
+
+    <!-- tab 1: price chart -->
+    <section id="t-chart">
+      <div class="ctlrow">
+        <div class="seg" id="tf" role="group" aria-label="足">
+          <button type="button" data-tf="d">日足</button>
+          <button type="button" data-tf="w">週足</button>
+          <button type="button" data-tf="m">月足</button>
+        </div>
+        <div class="seg" id="scale" role="group" aria-label="目盛り">
+          <button type="button" data-sc="lin">通常</button>
+          <button type="button" data-sc="log">対数</button>
+        </div>
+      </div>
+      <div class="ctlrow"><div class="seg sm" id="range" role="group" aria-label="期間"></div></div>
+      <div class="panel">
+        <div class="readout" id="cread"></div>
+        <div class="chart" id="cchart"></div>
+      </div>
+      <div class="facts" id="cfit"></div>
+      <p class="note">点線は、表示している期間の終値に当てはめた指数関数の近似曲線です（Excelの指数近似と同じ計算）。対数目盛りでは直線になります。</p>
+    </section>
+
+    <!-- tab 2: monthly return distribution -->
+    <section id="t-dist" hidden>
+      <div class="facts" id="dstats"></div>
+      <div class="panel">
+        <h2>月次騰落率の分布 <span id="dsub"></span></h2>
+        <div class="readout" id="dread"></div>
+        <div class="chart" id="dchart"></div>
+      </div>
+      <div class="panel">
+        <h2>幾何平均から計算したリターン倍率 <span id="msub"></span></h2>
+        <div class="tscroll"><table id="mtable"></table></div>
+      </div>
+      <p class="note">月次騰落率は、配当を含めた調整後の月末終値から計算しています。今月はまだ月の途中なので統計には含めず、分布図で今いる位置だけを色で示しています。</p>
+    </section>
+
+    <!-- tab 3: holding period -->
+    <section id="t-hold" hidden>
+      <div class="ctlrow">
+        <div class="seg" id="hmode" role="group" aria-label="計算方法">
+          <button type="button" data-hm="lh">年安値 → 年高値</button>
+          <button type="button" data-hm="ee">年末 → 年末</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>平均倍率 <span id="hsub1"></span></h2>
+        <div class="legend" id="hleg1"></div>
+        <div class="readout" id="hread1"></div>
+        <div class="chart" id="hchart1"></div>
+      </div>
+      <div class="panel">
+        <h2>年率（CAGR） <span>倍率から計算</span></h2>
+        <div class="legend" id="hleg2"></div>
+        <div class="readout" id="hread2"></div>
+        <div class="chart" id="hchart2"></div>
+      </div>
+      <div class="panel">
+        <h2>データ：平均倍率 <span id="hsub3"></span></h2>
+        <div class="tscroll"><table id="htable1"></table></div>
+      </div>
+      <div class="panel">
+        <h2>データ：年率（CAGR）</h2>
+        <div class="tscroll"><table id="htable2"></table></div>
+      </div>
+      <p class="note" id="hnote"></p>
+    </section>
+
+    <p class="foot">データ：Yahoo Finance（GitHub が米国市場の取引時間中に約15分ごとに更新）。価格は株式分割を調整済み。 <a href="https://limelightle-debug.github.io/ndx-heatmap/">Nasdaq 100 を開く</a></p>
+  </div>
+  <div class="empty" id="empty">データを読み込んでいます…</div>
+</div>
+
+<script src="d3.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store={get(k,d){try{const v=localStorage.getItem("tqqq."+k);return v==null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem("tqqq."+k,v)}catch(e){}}};
+const RANGES={d:[["3M","3ヶ月",63],["6M","6ヶ月",126],["1Y","1年",252],["2Y","2年",504]],w:[["1Y","1年",52],["2Y","2年",104],["5Y","5年",260],["ALL","全期間",0]],m:[["5Y","5年",60],["10Y","10年",120],["ALL","全期間",0]]};
+const DEF_RANGE={d:"6M",w:"2Y",m:"ALL"};
+const state={tab:store.get("tab","chart"),tf:store.get("tf","d"),sc:store.get("sc","lin"),range:{d:store.get("r_d",DEF_RANGE.d),w:store.get("r_w",DEF_RANGE.w),m:store.get("r_m",DEF_RANGE.m)},hm:store.get("hm","lh"),ci:null,di:null,hi:null};
+if(!["chart","dist","hold"].includes(state.tab))state.tab="chart";
+if(!RANGES[state.tf])state.tf="d";
+let D=null, DAYS=[], C={};
+
+/* ---------- data ---------- */
+const ymd=n=>{const s=String(n);return`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`};
+function setData(d){
+  D=d;
+  DAYS=d.daily.map(([n,o,h,l,c,a])=>({n,d:ymd(n),t:Date.UTC(+String(n).slice(0,4),+String(n).slice(4,6)-1,+String(n).slice(6,8)),o,h,l,c,a}));
+}
+function bars(tf){
+  if(tf==="d")return DAYS;
+  const out=[];let cur=null,key=null;
+  DAYS.forEach(x=>{
+    let k;
+    if(tf==="m")k=x.d.slice(0,7);
+    else{const dt=new Date(x.t);const wd=(dt.getUTCDay()+6)%7;k=new Date(x.t-wd*864e5).toISOString().slice(0,10)}
+    if(k!==key){cur={d:x.d,k,t:x.t,o:x.o,h:x.h,l:x.l,c:x.c,a:x.a,last:x.d};out.push(cur);key=k}
+    else{cur.h=Math.max(cur.h,x.h);cur.l=Math.min(cur.l,x.l);cur.c=x.c;cur.a=x.a;cur.last=x.d;cur.t2=x.t}
+  });
+  return out;
+}
+// least squares on ln(y) = ln(a) + b·x
+function expFit(xs,ys){
+  const n=xs.length;if(n<3)return null;
+  let sx=0,sy=0,sxx=0,sxy=0;for(let i=0;i<n;i++){const y=Math.log(ys[i]);sx+=xs[i];sy+=y;sxx+=xs[i]*xs[i];sxy+=xs[i]*y}
+  const b=(n*sxy-sx*sy)/(n*sxx-sx*sx), la=(sy-b*sx)/n;
+  let ssr=0,sst=0;const my=sy/n;for(let i=0;i<n;i++){const y=Math.log(ys[i]),f=la+b*xs[i];ssr+=(y-f)**2;sst+=(y-my)**2}
+  return{a:Math.exp(la),b,r2:sst?1-ssr/sst:1,f:x=>Math.exp(la+b*x)};
+}
+
+/* ---------- formatting ---------- */
+const pct=(v,d=1)=>v==null||!isFinite(v)?"—":(v>0?"+":v<0?"−":"±")+Math.abs(v*100).toFixed(d)+"%";
+const pctAbs=(v,d=1)=>v==null||!isFinite(v)?"—":(v<0?"−":"")+Math.abs(v*100).toFixed(d)+"%";
+const mult=v=>v==null||!isFinite(v)?"—":(v>=100?v.toFixed(0):v>=10?v.toFixed(1):v.toFixed(2))+"倍";
+const px=v=>v==null?"—":v>=100?v.toFixed(1):v>=1?v.toFixed(2):v.toFixed(3);
+const cls=v=>v>0?"pos":v<0?"neg":"";
+function readColors(){const cs=getComputedStyle(document.documentElement);const g=n=>cs.getPropertyValue(n).trim();C={up:g("--up"),down:g("--down"),ink:g("--ink"),muted:g("--muted"),tqqq:g("--s-tqqq"),qld:g("--s-qld"),qqq:g("--s-qqq"),hist:g("--s-hist"),chip:g("--chip")}}
+
+/* ---------- market status ---------- */
+function nyParts(date){const f=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",weekday:"short",hour:"numeric",minute:"numeric",hour12:false}).formatToParts(date);const o={};f.forEach(p=>o[p.type]=p.value);return{wd:o.weekday,min:(+o.hour%24)*60+(+o.minute)}}
+function marketOpen(date=new Date()){const p=nyParts(date);return !["Sat","Sun"].includes(p.wd)&&p.min>=570&&p.min<960}
+function renderStatus(){
+  if(!D)return;
+  const d=new Date(D.updatedAt);
+  const t=new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",month:"numeric",day:"numeric",weekday:"short",hour:"2-digit",minute:"2-digit"}).format(d);
+  const open=marketOpen();const age=(Date.now()-d.getTime())/6e4;const stale=open?age>45:age>4*1440;
+  $("status").innerHTML=`<span>更新 ${esc(t)}</span><span class="pill ${open?"open":""}"><i></i>${open?"米国市場 取引中":"米国市場 時間外"}</span>${stale?`<span class="pill warn">更新が遅れています</span>`:""}`;
+}
+function renderPrice(){
+  const last=DAYS[DAYS.length-1], prev=DAYS[DAYS.length-2];
+  const p=(D.latest&&D.latest.price)||last.c;const ch=p/prev.c-1;
+  const when=D.latest&&D.latest.time?new Intl.DateTimeFormat("ja-JP",{timeZone:"America/New_York",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}).format(new Date(D.latest.time*1000))+"（米国東部時間）":last.d;
+  let ath=0;DAYS.forEach(x=>{if(x.h>ath)ath=x.h});
+  $("price").innerHTML=`<div class="p"><small>$</small>${px(p)}</div><div class="chg ${cls(ch)}">${ch>=0?"+":"−"}${Math.abs(p-prev.c).toFixed(2)}（${pct(ch,2)}）</div>
+   <div class="meta">${esc(when)}時点 · 前日終値 $${px(prev.c)} · 上場来高値 $${px(ath)}（${pct(p/ath-1)}）</div>`;
+  const q=D.quotes||{};
+  $("peers").innerHTML=["QQQ","QLD"].map(s=>{const x=q[s];if(!x||x.price==null)return`<div class="peer"><span class="t">${s}</span><span class="v">—</span></div>`;const c=x.prev?x.price/x.prev-1:null;
+    return`<div class="peer"><span class="t">${s}</span><span class="v">$${px(x.price)}</span><span class="c ${cls(c)}">${pct(c,2)}</span></div>`}).join("");
+}
+
+/* ---------- tab 1: candles ---------- */
+function renderRangeButtons(){
+  $("range").innerHTML=RANGES[state.tf].map(([k,l])=>`<button type="button" data-rg="${k}" aria-pressed="${k===state.range[state.tf]}">${l}</button>`).join("");
+}
+function shownBars(){
+  const all=bars(state.tf);const r=RANGES[state.tf].find(x=>x[0]===state.range[state.tf])||RANGES[state.tf][0];
+  return r[2]?all.slice(-r[2]):all;
+}
+function renderCandles(){
+  const el=$("cchart");const B=shownBars();if(!B.length){el.innerHTML="";return}
+  const W=Math.max(300,el.clientWidth), narrow=W<560, H=narrow?Math.round(W*.95):420;
+  const ML=6,MR=46,MT=8,MB=22, PW=W-ML-MR, PH=H-MT-MB;
+  const t0=B[0].t, yrs=x=>(x.t-t0)/(365.25*864e5);
+  const fit=expFit(B.map(yrs),B.map(x=>x.c));
+  let lo=d3.min(B,x=>x.l), hi=d3.max(B,x=>x.h);
+  if(fit){B.forEach(x=>{const f=fit.f(yrs(x));lo=Math.min(lo,f);hi=Math.max(hi,f)})}
+  const log=state.sc==="log";
+  const y=(log?d3.scaleLog():d3.scaleLinear()).domain(log?[lo*.95,hi*1.05]:[Math.max(0,lo-(hi-lo)*.05),hi+(hi-lo)*.05]).range([MT+PH,MT]);
+  if(!log)y.nice();
+  const n=B.length, band=PW/n, bw=Math.max(1,Math.min(14,band*.7));
+  const x=i=>ML+band*(i+.5);
+  let g="";
+  const ticks=log?logTicks(y.domain()):y.ticks(5);
+  ticks.forEach(v=>{g+=`<line class="grid" x1="${ML}" x2="${ML+PW}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${ML+PW+6}" y="${y(v)+4}">${tickFmt(v)}</text>`});
+  // x ticks: years, or months for short daily views
+  let lastLab="";const span=(B[n-1].t-t0)/864e5;
+  B.forEach((b,i)=>{const lab=span>800?b.d.slice(0,4):b.d.slice(0,7);if(lab!==lastLab){const show=span>800?(+lab%(span>3000?2:1)===0):(+b.d.slice(5,7)%(span>300?3:1)===0);if(show&&i>0){g+=`<line class="grid" x1="${x(i)}" x2="${x(i)}" y1="${MT}" y2="${MT+PH}" opacity=".5"/><text class="ax" x="${x(i)}" y="${H-6}" text-anchor="middle">${span>800?"’"+lab.slice(2):(+lab.slice(5)===1?lab.slice(2,4)+"/1":+lab.slice(5)+"月")}</text>`}}lastLab=lab});
+  let c="";
+  B.forEach((b,i)=>{const col=b.c>=b.o?C.up:C.down;const xc=x(i).toFixed(1);
+    c+=`<line x1="${xc}" x2="${xc}" y1="${y(b.h).toFixed(1)}" y2="${y(b.l).toFixed(1)}" stroke="${col}" stroke-width="1"/>`;
+    const y1=y(Math.max(b.o,b.c)),y2=y(Math.min(b.o,b.c));c+=`<rect x="${(x(i)-bw/2).toFixed(1)}" y="${y1.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1,y2-y1).toFixed(1)}" fill="${col}"/>`});
+  let f="";if(fit){f=`<path class="fit" d="${B.map((b,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(fit.f(yrs(b))).toFixed(1)).join("")}"/>`}
+  let xh="";const ci=state.ci!=null&&state.ci<n?state.ci:null;
+  if(ci!=null)xh=`<line class="xh" x1="${x(ci)}" x2="${x(ci)}" y1="${MT}" y2="${MT+PH}"/>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="TQQQのローソク足チャート">${g}${c}${f}${xh}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
+  el._geo={ML,PW,n};
+  const b=B[ci!=null?ci:n-1];const lbl=state.tf==="d"?b.d:state.tf==="w"?`${b.d}〜${b.last}`:b.d.slice(0,7);
+  $("cread").innerHTML=`<b>${lbl}</b>　始 ${px(b.o)}　高 ${px(b.h)}　安 ${px(b.l)}　終 <b>${px(b.c)}</b>${fit?`　近似線 ${px(fit.f(yrs(b)))}`:""}`;
+  // fit facts
+  if(fit){const lastB=B[n-1];const dev=lastB.c/fit.f(yrs(lastB))-1;
+    $("cfit").innerHTML=`<div class="fact wide"><div class="l">近似曲線</div><div class="v eq">y = ${fit.a.toPrecision(4)}·e<sup>${fit.b.toFixed(4)}x</sup></div><div class="s">x＝期間の始まりからの年数</div></div>
+     <div class="fact"><div class="l">近似の年率</div><div class="v ${cls(fit.b)}">${pct(Math.exp(fit.b)-1)}</div><div class="s">e<sup>b</sup> − 1</div></div>
+     <div class="fact"><div class="l">R²（対数で計算）</div><div class="v">${fit.r2.toFixed(3)}</div><div class="s">1に近いほど良い</div></div>
+     <div class="fact"><div class="l">近似線との差</div><div class="v ${cls(dev)}">${pct(dev)}</div><div class="s">近似線 $${px(fit.f(yrs(lastB)))}</div></div>`}
+  else $("cfit").innerHTML="";
+}
+const tickFmt=v=>String(+v.toPrecision(3));
+function logTicks([a,b]){
+  for(const steps of [[1,2,5],[1,3],[1]]){
+    const out=[];
+    for(let e=Math.floor(Math.log10(a));e<=Math.ceil(Math.log10(b));e++)steps.forEach(s=>{const v=+(s*10**e).toPrecision(3);if(v>=a&&v<=b)out.push(v)});
+    if(out.length<=8||steps.length===1)return out;
+  }
+}
+
+/* ---------- tab 2: distribution ---------- */
+function monthly(){
+  const m=[];let key=null;
+  DAYS.forEach(x=>{const k=x.d.slice(0,7);if(k!==key){m.push({k,a:x.a,last:x.d});key=k}else{m[m.length-1].a=x.a;m[m.length-1].last=x.d}});
+  const rets=[];for(let i=1;i<m.length;i++)rets.push({k:m[i].k,r:m[i].a/m[i-1].a-1});
+  // the latest month is complete only once the next month has started (New York date)
+  const nyNow=new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York",year:"numeric",month:"2-digit"}).format(new Date()).slice(0,7);
+  let cur=null;if(rets.length&&rets[rets.length-1].k>=nyNow)cur=rets.pop();
+  return{rets,cur};
+}
+function renderDist(){
+  const {rets,cur}=monthly();if(!rets.length)return;
+  const rs=rets.map(x=>x.r);const n=rs.length;
+  const mean=d3.mean(rs), med=d3.median(rs), geo=Math.exp(d3.mean(rs,r=>Math.log(1+r)))-1, sd=d3.deviation(rs);
+  $("dstats").innerHTML=`<div class="fact"><div class="l">平均（算術）</div><div class="v ${cls(mean)}">${pct(mean,2)}</div><div class="s">月次</div></div>
+   <div class="fact"><div class="l">中央値</div><div class="v ${cls(med)}">${pct(med,2)}</div><div class="s">月次</div></div>
+   <div class="fact"><div class="l">幾何平均</div><div class="v ${cls(geo)}">${pct(geo,2)}</div><div class="s">年率 ${pct((1+geo)**12-1)}</div></div>
+   <div class="fact"><div class="l">月数</div><div class="v">${n}</div><div class="s">${rets[0].k}〜${rets[n-1].k} · 標準偏差 ${pctAbs(sd)}</div></div>`;
+  $("dsub").textContent=`2.5%刻み · ${n}ヶ月`;
+  // bins of 2.5%
+  const w=.025, b0=Math.floor(Math.min(d3.min(rs),cur?cur.r:0)/w), b1=Math.floor(Math.max(d3.max(rs),cur?cur.r:0)/w);
+  const bins=[];for(let b=b0;b<=b1;b++)bins.push({lo:b*w,hi:(b+1)*w,c:0,ms:[]});
+  rets.forEach(x=>{const i=Math.floor(x.r/w)-b0;bins[i].c++;bins[i].ms.push(x)});
+  const curBin=cur?Math.floor(cur.r/w)-b0:-1;
+  const el=$("dchart");const W=Math.max(300,el.clientWidth), H=Math.round(Math.min(360,W*.72));
+  const ML=26,MR=6,MT=16,MB=24, PW=W-ML-MR, PH=H-MT-MB;
+  const mx=d3.max(bins,b=>b.c)||1, y=d3.scaleLinear().domain([0,mx*1.12+1]).nice(4).range([MT+PH,MT]);
+  const band=PW/bins.length, bw=Math.max(2,band-2);
+  let g="";y.ticks(4).filter(Number.isInteger).forEach(v=>{g+=`<line class="grid" x1="${ML}" x2="${ML+PW}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${ML-5}" y="${y(v)+4}" text-anchor="end">${v}</text>`});
+  const lstep=band*4<34?20:10;
+  bins.forEach((b,i)=>{const xx=ML+i*band;const v=Math.round(b.lo*1000)/10;if(v%lstep===0)g+=`<text class="ax" x="${xx}" y="${H-6}" text-anchor="middle">${v>0?"+":""}${v}%</text><line class="grid" x1="${xx}" x2="${xx}" y1="${MT+PH}" y2="${MT+PH+4}"/>`;
+    if(b.lo===0)g+=`<line x1="${xx}" x2="${xx}" y1="${MT}" y2="${MT+PH}" stroke="${C.muted}" stroke-dasharray="2 3"/>`});
+  let bars="";bins.forEach((b,i)=>{const xx=ML+i*band+(band-bw)/2;const hb=y(0)-y(b.c);const isCur=i===curBin;const sel=state.di===i;
+    const col=isCur?C.ink:C.hist;
+    if(b.c)bars+=`<rect x="${xx.toFixed(1)}" y="${y(b.c).toFixed(1)}" width="${bw.toFixed(1)}" height="${hb.toFixed(1)}" rx="1.5" fill="${col}" opacity="${sel||state.di==null?1:.45}"/>`;
+    if(b.c&&band>=11)bars+=`<text class="ax" x="${(xx+bw/2).toFixed(1)}" y="${(y(b.c)-3).toFixed(1)}" text-anchor="middle">${b.c}</text>`;
+    if(isCur)bars+=`<path d="M${(xx+bw/2).toFixed(1)} ${(y(b.c)-(b.c&&band>=11?14:4)).toFixed(1)} l-5 -7 h10 z" fill="${C.ink}"/>`});
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="TQQQの月次騰落率の分布">${g}${bars}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
+  el._geo={ML,PW,n:bins.length,bins};
+  const show=state.di!=null&&bins[state.di]?bins[state.di]:null;
+  $("dread").innerHTML=show?`<b>${pct(show.lo)} 〜 ${pct(show.hi)}</b>　${show.c}ヶ月${show.ms.length?"："+show.ms.slice(-6).map(m=>m.k.replace("-","/")).join("、")+(show.ms.length>6?" ほか":""):""}`
+    :cur?`<b>今月（${cur.k.replace("-","/")}、途中）</b>　${pct(cur.r)}　▼の棒に入っています`:"棒をタップすると、その範囲に入った月が出ます";
+  // multiples
+  const ys=[1,5,10,15,20];
+  $("msub").textContent=`月次 ${pct(geo,2)}（年率 ${pct((1+geo)**12-1)}）の複利`;
+  $("mtable").innerHTML=`<thead><tr><th>保有期間</th><th>倍率</th><th>計算式</th></tr></thead><tbody>${ys.map(k=>`<tr><td class="k">${k}年</td><td>${mult((1+geo)**(12*k))}</td><td class="k">(1${geo<0?"−":"+"}${Math.abs(geo*100).toFixed(2)}%)<sup>${12*k}</sup></td></tr>`).join("")}</tbody>`;
+}
+
+/* ---------- tab 3: holding period ---------- */
+const SYMS=[["QQQ","qqq"],["QLD","qld"],["TQQQ","tqqq"]];
+function holdStats(mode){
+  const out={};
+  SYMS.forEach(([s])=>{
+    const Y=D.years[s];const thisYear=new Date().getFullYear();
+    const years=Object.keys(Y).map(Number).filter(y=>y<thisYear);
+    const res=[];
+    for(let n=1;n<=10;n++){let sum=0,cnt=0;
+      years.forEach(y=>{const e=Y[y+n];if(!e||y+n>=thisYear)return;
+        if(mode==="lh"){if(!Y[y].full)return;sum+=e.hi/Y[y].lo;cnt++}
+        else{sum+=e.end/Y[y].end;cnt++}});
+      const m=cnt?sum/cnt:null;res.push({n,m,cnt,cagr:m?m**(1/n)-1:null})}
+    const first=years.find(y=>mode==="ee"||Y[y].full);
+    out[s]={res,first,last:Math.max(...years)};
+  });
+  const t=out.TQQQ.res.filter(r=>r.m);out.fit=expFit(t.map(r=>r.n),t.map(r=>r.m));
+  return out;
+}
+function lineChart(el,read,{xs,series,yfmt,ylab,sel}){
+  const W=Math.max(300,el.clientWidth), H=Math.round(Math.min(340,W*.75));
+  const ML=44,MR=44,MT=10,MB=26, PW=W-ML-MR, PH=H-MT-MB;
+  const vals=series.flatMap(s=>s.vals.filter(v=>v!=null&&isFinite(v)));
+  const y=d3.scaleLinear().domain([Math.min(0,d3.min(vals)),d3.max(vals)]).nice().range([MT+PH,MT]);
+  const x=i=>ML+(i/(xs.length-1))*PW;
+  let g="";y.ticks(5).forEach(v=>{g+=`<line class="grid" x1="${ML}" x2="${ML+PW}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${ML-6}" y="${y(v)+4}" text-anchor="end">${yfmt(v)}</text>`});
+  xs.forEach((v,i)=>{g+=`<text class="ax" x="${x(i)}" y="${H-8}" text-anchor="middle">${v}</text>`});
+  g+=`<text class="ax" x="${ML+PW/2}" y="${H+8}" text-anchor="middle">${ylab}</text>`;
+  let p="";series.forEach(s=>{const d=s.vals.map((v,i)=>v==null?null:[x(i),y(v)]).reduce((acc,pt)=>{if(!pt)return acc+"|";return acc+(acc===""||acc.endsWith("|")?"M":"L")+pt[0].toFixed(1)+" "+pt[1].toFixed(1)},"").replace(/\|/g,"");
+    p+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.dash?1.6:2.2}" ${s.dash?'stroke-dasharray="6 4"':""} stroke-linejoin="round" stroke-linecap="round"/>`;
+    s.vals.forEach((v,i)=>{if(v!=null&&!s.dash)p+=`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${sel===i?4.5:2.6}" fill="${s.color}" stroke="var(--panel)" stroke-width="1.5"/>`});
+    const li=s.vals.length-1;if(!s.dash&&s.vals[li]!=null)p+=`<text x="${ML+PW+6}" y="${y(s.vals[li])+4}" class="ax" style="fill:var(--ink2);font-weight:700">${s.name}</text>`});
+  // keep end labels from overlapping
+  let xh="";if(sel!=null)xh=`<line class="xh" x1="${x(sel)}" x2="${x(sel)}" y1="${MT}" y2="${MT+PH}"/>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H+12}" role="img">${g}${p}${xh}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
+  el._geo={ML,PW,n:xs.length,step:true};
+  const i=sel!=null?sel:xs.length-1;
+  read.innerHTML=`<b>${xs[i]}年</b>　`+series.map(s=>`${s.name} <b>${s.vals[i]==null?"—":yfmt(s.vals[i],true)}</b>`).join("　");
+}
+function declutter(svgEl){
+  // nudge right-edge labels apart (at least 12px)
+  const t=[...svgEl.querySelectorAll('text[style*="font-weight:700"]')].map(e=>({e,y:+e.getAttribute("y")})).sort((a,b)=>a.y-b.y);
+  for(let i=1;i<t.length;i++)if(t[i].y-t[i-1].y<12){t[i].y=t[i-1].y+12;t[i].e.setAttribute("y",t[i].y)}
+}
+function renderHold(){
+  const S=holdStats(state.hm);const xs=[...Array(10)].map((_,i)=>i+1);const sel=state.hi;
+  const fitVals=S.fit?xs.map(n=>S.fit.f(n)):xs.map(()=>null);
+  const ser=SYMS.map(([s,k])=>({name:s,color:C[k],vals:S[s].res.map(r=>r.m)})).concat([{name:"TQQQ近似",color:C.ink,vals:fitVals,dash:true}]);
+  lineChart($("hchart1"),$("hread1"),{xs,series:ser,yfmt:(v,full)=>full?mult(v):v+"倍",ylab:"保有年数",sel});
+  declutter($("hchart1").querySelector("svg"));
+  const ser2=SYMS.map(([s,k])=>({name:s,color:C[k],vals:S[s].res.map(r=>r.cagr)}));
+  lineChart($("hchart2"),$("hread2"),{xs,series:ser2,yfmt:(v,full)=>full?pct(v):Math.round(v*100)+"%",ylab:"保有年数",sel});
+  declutter($("hchart2").querySelector("svg"));
+  const sw=k=>`<i style="background:${C[k]}"></i>`;
+  $("hleg1").innerHTML=SYMS.map(([s,k])=>`<span>${sw(k)}${s}</span>`).join("")+(S.fit?`<span><i class="dash"></i>TQQQ近似 <span class="eq">y = ${S.fit.a.toFixed(4)}e<sup>${S.fit.b.toFixed(4)}x</sup>　R² = ${S.fit.r2.toFixed(4)}</span></span>`:"");
+  $("hleg2").innerHTML=SYMS.map(([s,k])=>`<span>${sw(k)}${s}</span>`).join("");
+  const lh=state.hm==="lh";
+  $("hsub1").textContent=lh?"ある年の安値で買い、N年後の年の高値で売る":"ある年の年末に買い、N年後の年末に売る";
+  $("hsub3").textContent="";
+  $("htable1").innerHTML=`<thead><tr><th>年</th>${SYMS.map(([s])=>`<th>${s}</th>`).join("")}<th>近似</th></tr></thead><tbody>${xs.map((n,i)=>`<tr${sel===i?' class="hl"':""}><td class="k">${n}年</td>${SYMS.map(([s])=>{const r=S[s].res[i];return`<td>${r.m==null?"—":r.m.toFixed(2)}</td>`}).join("")}<td>${fitVals[i]==null?"—":fitVals[i].toFixed(2)}</td></tr>`).join("")}</tbody>`;
+  $("htable2").innerHTML=`<thead><tr><th>年</th>${SYMS.map(([s])=>`<th>${s}</th>`).join("")}</tr></thead><tbody>${xs.map((n,i)=>`<tr${sel===i?' class="hl"':""}><td class="k">${n}年</td>${SYMS.map(([s])=>`<td>${pct(S[s].res[i].cagr)}</td>`).join("")}</tr>`).join("")}</tbody>`;
+  const rng=SYMS.map(([s])=>{const c=S[s].res.map(r=>r.cnt);return`${s} ${S[s].first}〜${S[s].last}年（平均に使った年の数：1年 ${c[0]}、10年 ${c[9]}）`}).join("、");
+  $("hnote").textContent=(lh?"各年の安値と、N年後の年の高値の比を、取れるすべての年について平均しています。買う年は1月初めからデータがある年だけを使っています。":"各年の年末終値と、N年後の年末終値の比を、取れるすべての年について平均しています。")+`価格は配当込みの調整後の値で、今年はまだ終わっていないので含めていません。対象：${rng}。年率（CAGR）は、平均倍率を年数で割り戻した値です（倍率^(1/年数) − 1）。`;
+}
+
+/* ---------- render ---------- */
+function renderControls(){
+  document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.tab===state.tab));
+  document.querySelectorAll("#tf button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.tf===state.tf));
+  document.querySelectorAll("#scale button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.sc===state.sc));
+  document.querySelectorAll("#hmode button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.hm===state.hm));
+  renderRangeButtons();
+}
+function renderTab(){
+  ["chart","dist","hold"].forEach(t=>$("t-"+t).hidden=state.tab!==t);
+  if(state.tab==="chart")renderCandles();else if(state.tab==="dist")renderDist();else renderHold();
+}
+function renderAll(){
+  readColors();renderControls();
+  if(!D)return;
+  $("app").hidden=false;$("empty").hidden=true;
+  renderStatus();renderPrice();renderTab();
+}
+
+/* ---------- load ---------- */
+let loading=false;
+async function load(manual){
+  if(loading)return;loading=true;$("refresh").classList.add("spin");
+  try{
+    const r=await fetch("data/tqqq.json?ts="+Date.now(),{cache:"no-store"});
+    if(r.status===404)throw new Error("nodata");
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const d=await r.json();
+    if(!d||!Array.isArray(d.daily)||!d.years)throw new Error("bad");
+    if(!D||d.updatedAt!==D.updatedAt||manual){setData(d);renderAll()}else renderStatus();
+  }catch(e){
+    if(!D){$("empty").innerHTML=e.message==="nodata"?"まだデータがありません。<br>GitHub の Actions で「Update TQQQ data」を一度実行すると表示されます。":"データを読み込めませんでした。通信状況を確認して、右上の↻で再読み込みしてください。";$("status").textContent="データなし"}
+  }finally{loading=false;$("refresh").classList.remove("spin")}
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.tab){state.tab=b.dataset.tab;store.set("tab",state.tab);renderControls();renderTab();return}
+  if(b.dataset.tf){state.tf=b.dataset.tf;store.set("tf",state.tf);state.ci=null;renderControls();renderCandles();return}
+  if(b.dataset.sc){state.sc=b.dataset.sc;store.set("sc",state.sc);renderControls();renderCandles();return}
+  if(b.dataset.rg){state.range[state.tf]=b.dataset.rg;store.set("r_"+state.tf,b.dataset.rg);state.ci=null;renderControls();renderCandles();return}
+  if(b.dataset.hm){state.hm=b.dataset.hm;store.set("hm",state.hm);renderControls();renderHold();return}
+  if(b.id==="refresh")load(true);
+});
+// scrub: candles, histogram and line charts all map the pointer to the nearest index
+function scrub(el,onIndex,onLeave){
+  let down=false;
+  const at=e=>{const g=el._geo,svg=el.querySelector("svg");if(!g||!svg)return;const r=svg.getBoundingClientRect();const sx=(e.clientX-r.left)*(svg.viewBox.baseVal.width/r.width);
+    const f=(sx-g.ML)/g.PW;const i=g.step?Math.round(f*(g.n-1)):Math.floor(f*g.n);onIndex(Math.max(0,Math.min(g.n-1,i)))};
+  el.addEventListener("pointerdown",e=>{if(e.target.closest(".hit")){down=true;at(e)}});
+  el.addEventListener("pointermove",e=>{if(down||e.pointerType==="mouse")at(e)});
+  addEventListener("pointerup",()=>{down=false});
+  el.addEventListener("pointerleave",e=>{if(e.pointerType==="mouse")onLeave()});
+}
+scrub($("cchart"),i=>{if(i!==state.ci){state.ci=i;renderCandles()}},()=>{state.ci=null;renderCandles()});
+scrub($("dchart"),i=>{if(i!==state.di){state.di=i;renderDist()}},()=>{state.di=null;renderDist()});
+scrub($("hchart1"),i=>{if(i!==state.hi){state.hi=i;renderHold()}},()=>{state.hi=null;renderHold()});
+scrub($("hchart2"),i=>{if(i!==state.hi){state.hi=i;renderHold()}},()=>{state.hi=null;renderHold()});
+let rt;new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(()=>{if(D)renderTab()},80)}).observe($("app"));
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")load(false)});
+setInterval(()=>{if(document.visibilityState==="visible")load(false)},5*60*1000);
+setInterval(()=>{if(D)renderStatus()},60*1000);
+renderAll();load(false);
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
+</script>
+</body>
+</html>
