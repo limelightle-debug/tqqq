@@ -27,16 +27,46 @@ def sig(x, n=5):
     return float(f"{x:.{n}g}")
 
 
+CRUMB = None
+
+
+def yahoo_crumb():
+    """Yahoo answers cloud servers more reliably with its consent cookie and a crumb token."""
+    global CRUMB
+    if CRUMB is not None:
+        return CRUMB
+    CRUMB = ""
+    try:
+        session.get("https://fc.yahoo.com", timeout=15, allow_redirects=True)
+    except requests.RequestException:
+        pass
+    try:
+        r = session.get("https://query1.finance.yahoo.com/v1/test/getcrumb", timeout=15)
+        if r.status_code == 200 and r.text and "<" not in r.text and len(r.text) < 40:
+            CRUMB = r.text.strip()
+    except requests.RequestException:
+        pass
+    print(f"yahoo crumb: {'yes' if CRUMB else 'no'}")
+    return CRUMB
+
+
 def yahoo_daily(symbol):
     """Full daily history from Yahoo Finance: split-adjusted OHLC plus dividend-adjusted close."""
     now = int(time.time())
     last = None
-    for host in ("query1", "query2"):
+    crumb = yahoo_crumb()
+    for attempt, host in enumerate(("query1", "query2", "query1", "query2")):
+        if attempt:
+            time.sleep(5 * attempt)
         try:
-            r = session.get(f"https://{host}.finance.yahoo.com/v8/finance/chart/{symbol}"
-                            f"?period1=0&period2={now}&interval=1d&events=div%2Csplit", timeout=30)
+            url = (f"https://{host}.finance.yahoo.com/v8/finance/chart/{symbol}"
+                   f"?period1=0&period2={now}&interval=1d&events=div%2Csplit")
+            if crumb:
+                url += f"&crumb={crumb}"
+            r = session.get(url, timeout=30)
             if r.status_code != 200:
-                last = f"HTTP {r.status_code}"
+                last = f"HTTP {r.status_code} from {host}: {r.text[:120]!r}"
+                print(f"{symbol}: {last}")
                 continue
             res = r.json()["chart"]["result"][0]
             q = res["indicators"]["quote"][0]
@@ -52,8 +82,8 @@ def yahoo_daily(symbol):
                 raise RuntimeError(f"{symbol}: only {len(rows)} days")
             return rows, res.get("meta", {})
         except (requests.RequestException, KeyError, IndexError, TypeError, ValueError) as e:
-            last = str(e)
-        time.sleep(2)
+            last = f"{type(e).__name__}: {e}"
+            print(f"{symbol}: {last}")
     raise RuntimeError(f"yahoo {symbol}: {last}")
 
 
@@ -117,4 +147,16 @@ def update_tqqq():
 
 if __name__ == "__main__":
     TQQQ_OUT.parent.mkdir(exist_ok=True)
-    update_tqqq()
+    status = TQQQ_OUT.parent / "status.json"
+    try:
+        update_tqqq()
+        result = {"ok": True}
+    except Exception as e:  # leave the reason in the repo so it can be read without signing in
+        print(f"error: {e}", file=sys.stderr)
+        result = {"ok": False, "error": f"{type(e).__name__}: {e}"[:500],
+                  "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
+    old = json.loads(status.read_text(encoding="utf-8")) if status.exists() else None
+    if result["ok"] and old == {"ok": True}:
+        pass
+    else:
+        status.write_text(json.dumps(result, ensure_ascii=False) + "\n", encoding="utf-8")
