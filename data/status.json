@@ -1,0 +1,1 @@
+{"ok": false, "error": "RuntimeError: yahoo TQQQ: HTTP 429 from query2: 'Too Many Requests\\r\\n'", "at": "2026-10-18T07:34:41Z"}
