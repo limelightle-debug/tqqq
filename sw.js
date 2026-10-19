@@ -1,7 +1,7 @@
 // Offline shell + latest data. Bump CACHE when the app files change.
-const CACHE = "tqqq-v5";
+const CACHE = "tqqq-v7";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./d3.min.js",
-  "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png", "./icons/avatar.png"];
+  "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png", "./icons/avatar.png", "./icons/lab.jpg"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

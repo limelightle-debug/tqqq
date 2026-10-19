@@ -57,12 +57,15 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .price .p{font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size:44px;line-height:1;font-variant-numeric:tabular-nums}
 .price .p small{font-size:20px;font-weight:600;color:var(--ink2);margin-right:2px}
 .price .chg{font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
+.pside{display:flex;flex-direction:column;gap:2px}
+.dhl{display:flex;gap:12px;font-size:12px;color:var(--muted)}
+.dhl b{font-family:var(--f-tick);font-stretch:82%;font-size:15px;color:var(--ink);font-weight:700;margin-left:3px}
 .price .meta{font-size:12px;color:var(--muted);width:100%}
 .peers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
 .peer{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .peer .t{font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size:15px;color:var(--ink2)}
 .peer .v{font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
-.peer .c{font-family:var(--f-tick);font-stretch:82%;font-size:13px;font-variant-numeric:tabular-nums}
+.peer .c{font-family:var(--f-tick);font-stretch:82%;font-size:13px;font-variant-numeric:tabular-nums;width:100%}
 .pos{color:var(--up)} .neg{color:var(--down)}
 
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0;margin-top:12px}
@@ -71,6 +74,14 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .tabctl{margin-top:14px}
 .ctlrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
 .readout{font-size:12px;color:var(--ink2);min-height:18px;margin:6px 2px 2px;font-variant-numeric:tabular-nums}
+#cread,#kread,#hread1,#hread2,#pread{height:40px;overflow:hidden}
+.rrow{display:flex;gap:14px;white-space:nowrap;line-height:20px}
+.dlist{margin-top:8px;font-size:12px;color:var(--ink2)}
+.dlist .dhead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.dlist .dhead b{font-family:var(--f-tick);font-stretch:82%;font-size:14px;color:var(--ink)}
+.dmonths{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:4px 10px;margin-top:6px}
+.dmonths span{display:flex;justify-content:space-between;gap:6px;font-family:var(--f-tick);font-stretch:82%;font-size:13px;font-variant-numeric:tabular-nums;color:var(--ink);border-bottom:1px solid var(--line);padding:2px 0}
+.dmonths i{font-style:normal;color:var(--muted)}
 .readout b{font-family:var(--f-tick);font-stretch:82%;color:var(--ink);font-size:13px}
 .chart{position:relative;touch-action:pan-y;user-select:none;-webkit-user-select:none}
 .chart svg{display:block;width:100%;height:auto;overflow:visible}
@@ -85,6 +96,10 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .fact .s{font-size:11.5px;color:var(--ink2)}
 .fact.wide{grid-column:1/-1}
 #cfit,#kfacts{grid-template-columns:repeat(3,minmax(0,1fr))}
+#dstats{grid-template-columns:repeat(4,minmax(0,1fr))}
+#dstats .fact{padding:9px 8px}
+#dstats .v{font-size:19px}
+#dstats .s{font-size:10.5px;line-height:1.4}
 #kfacts .v{font-size:20px}
 td small{display:block;font-family:var(--f-body);font-stretch:100%;font-size:10.5px;color:var(--muted);font-weight:700}
 .fact .v.eq{font-size:18px;white-space:normal}
@@ -104,6 +119,9 @@ tr.hl td{background:var(--chip)}
 .empty{padding:50px 16px;text-align:center;color:var(--muted);font-size:13px;line-height:1.8}
 .foot{margin-top:18px;font-size:11.5px;color:var(--muted);line-height:1.7}
 .foot a{color:var(--accent)}
+.foot.lab{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:22px;padding-top:14px;border-top:1px solid var(--line)}
+.labname{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:var(--ink);letter-spacing:.06em}
+.labname img{width:36px;height:36px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 1px var(--line)}
 @media (max-width:420px){.price .p{font-size:40px}.seg button{padding:8px 9px;font-size:12.5px}}
 @media (prefers-reduced-motion:reduce){.refresh.spin{animation:none}}
 </style>
@@ -153,15 +171,21 @@ tr.hl td{background:var(--chip)}
         <div class="chart" id="cchart"></div>
       </div>
       <div class="facts" id="cfit"></div>
+      <div class="panel">
+        <h2>騰落率の比較 <span>終値・期間の始まりを0%</span></h2>
+        <div class="legend" id="pleg"></div>
+        <div class="readout" id="pread"></div>
+        <div class="chart" id="pchart"></div>
+      </div>
     </section>
 
     <!-- tab 2: monthly return distribution -->
     <section id="t-dist" hidden>
       <div class="facts" id="dstats"></div>
       <div class="panel">
-        <h2>月次騰落率の分布 <span id="dsub"></span></h2>
-        <div class="readout" id="dread"></div>
+        <h2>月次騰落率の分布</h2>
         <div class="chart" id="dchart"></div>
+        <div class="dlist" id="dread"></div>
       </div>
       <div class="panel">
         <h2>幾何平均から計算したリターン倍率 <span id="msub"></span></h2>
@@ -207,7 +231,7 @@ tr.hl td{background:var(--chip)}
       </div>
     </section>
 
-    <p class="foot"><a href="https://limelightle-debug.github.io/ndx-heatmap/">Nasdaq 100 を開く</a></p>
+    <div class="foot lab"><span class="labname"><img src="icons/lab.jpg" alt="" width="36" height="36">恐怖指数研究所</span><a href="https://limelightle-debug.github.io/ndx-heatmap/">Nasdaq 100 を開く</a></div>
   </div>
   <div class="empty" id="empty">データを読み込んでいます…</div>
 </div>
@@ -219,7 +243,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"
 const store={get(k,d){try{const v=localStorage.getItem("tqqq."+k);return v==null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem("tqqq."+k,v)}catch(e){}}};
 const RANGES={d:[["3M","3ヶ月",63],["6M","6ヶ月",126],["1Y","1年",252],["2Y","2年",504]],w:[["1Y","1年",52],["2Y","2年",104],["5Y","5年",260],["ALL","全期間",0]],m:[["5Y","5年",60],["10Y","10年",120],["ALL","全期間",0]]};
 const DEF_RANGE={d:"6M",w:"2Y",m:"ALL"};
-const state={tab:store.get("tab","chart"),tf:store.get("tf","d"),sc:store.get("sc","lin"),range:{d:store.get("r_d",DEF_RANGE.d),w:store.get("r_w",DEF_RANGE.w),m:store.get("r_m",DEF_RANGE.m)},hm:store.get("hm","lh"),ci:null,di:null,hi:null,ki:null};
+const state={tab:store.get("tab","chart"),tf:store.get("tf","d"),sc:store.get("sc","lin"),range:{d:store.get("r_d",DEF_RANGE.d),w:store.get("r_w",DEF_RANGE.w),m:store.get("r_m",DEF_RANGE.m)},hm:store.get("hm","lh"),ci:null,di:null,hi:null,ki:null,pi:null};
 if(!["chart","dist","hold"].includes(state.tab))state.tab="chart";
 if(!RANGES[state.tf])state.tf="d";
 let D=null, DAYS=[], C={};
@@ -228,7 +252,7 @@ let D=null, DAYS=[], C={};
 const ymd=n=>{const s=String(n);return`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`};
 function setData(d){
   D=d;
-  DAYS=d.daily.map(([n,o,h,l,c,a])=>({n,d:ymd(n),t:Date.UTC(+String(n).slice(0,4),+String(n).slice(4,6)-1,+String(n).slice(6,8)),o,h,l,c,a}));
+  DAYS=d.daily.map(([n,o,h,l,c,a,qc,lc])=>({n,d:ymd(n),t:Date.UTC(+String(n).slice(0,4),+String(n).slice(4,6)-1,+String(n).slice(6,8)),o,h,l,c,a,qc:qc??null,lc:lc??null}));
 }
 function bars(tf){
   if(tf==="d")return DAYS;
@@ -237,8 +261,8 @@ function bars(tf){
     let k;
     if(tf==="m")k=x.d.slice(0,7);
     else{const dt=new Date(x.t);const wd=(dt.getUTCDay()+6)%7;k=new Date(x.t-wd*864e5).toISOString().slice(0,10)}
-    if(k!==key){cur={d:x.d,k,t:x.t,o:x.o,h:x.h,l:x.l,c:x.c,a:x.a,last:x.d};out.push(cur);key=k}
-    else{cur.h=Math.max(cur.h,x.h);cur.l=Math.min(cur.l,x.l);cur.c=x.c;cur.a=x.a;cur.last=x.d;cur.t2=x.t}
+    if(k!==key){cur={d:x.d,k,t:x.t,o:x.o,h:x.h,l:x.l,c:x.c,a:x.a,qc:x.qc,lc:x.lc,last:x.d};out.push(cur);key=k}
+    else{cur.h=Math.max(cur.h,x.h);cur.l=Math.min(cur.l,x.l);cur.c=x.c;cur.a=x.a;if(x.qc!=null)cur.qc=x.qc;if(x.lc!=null)cur.lc=x.lc;cur.last=x.d;cur.t2=x.t}
   });
   return out;
 }
@@ -276,11 +300,29 @@ function renderPrice(){
   const live=Math.abs(p-last.c)>1e-6;
   const when=live?`最新値 · 日足は${md(last.d)}まで`:`${md(last.d)}の終値`;
   let ath=0;DAYS.forEach(x=>{if(x.h>ath)ath=x.h});
-  $("price").innerHTML=`<div class="p"><small>$</small>${px(p)}</div><div class="chg ${cls(ch)}">${ch>=0?"+":"−"}${Math.abs(p-prev.c).toFixed(2)}（${pct(ch,2)}）</div>
+  // day's high and low: from the live quote while the market is open, otherwise the last daily bar
+  const dh=qt.high!=null&&live?qt.high:last.h, dl=qt.low!=null&&live?qt.low:last.l;
+  $("price").innerHTML=`<div class="p"><small>$</small>${px(p)}</div><div class="pside"><div class="chg ${cls(ch)}">${ch>=0?"+":"−"}${Math.abs(p-prev.c).toFixed(2)}（${pct(ch,2)}）</div><div class="dhl"><span>高値 <b>${dh.toFixed(2)}</b></span><span>安値 <b>${dl.toFixed(2)}</b></span></div></div>
    <div class="meta">${esc(when)} · 前日終値 $${px(prev.c)} · 上場来高値 $${px(ath)}（${pct(p/ath-1)}）</div>`;
+  renderPeers();
+}
+// cards under the price: QQQ and QLD, or on the distribution tab this month's provisional high and low
+function renderPeers(){
+  if(state.tab==="dist"||state.tab==="hold"){
+    // distribution tab: this month so far; return tab: this year so far (against the previous month-end / year-end close)
+    const yearly=state.tab==="hold", last=DAYS[DAYS.length-1], len=yearly?4:7, k=last.d.slice(0,len);
+    const cur=DAYS.filter(x=>x.d.slice(0,len)===k), before=DAYS.filter(x=>x.d.slice(0,len)<k);
+    const base=before.length?before[before.length-1].c:null;
+    const hi=Math.max(...cur.map(x=>x.h)), lo=Math.min(...cur.map(x=>x.l));
+    const name=yearly?`${k}年`:`${+k.slice(5)}月`, ref=yearly?"前年末比":"前月末比";
+    const card=(lab,v)=>{const r=base?v/base-1:null;return`<div class="peer"><span class="t">${lab}</span><span class="v">$${v.toFixed(2)}</span><span class="c ${cls(r)}">${base?`${ref} ${pct(r,2)}`:""}</span></div>`};
+    $("peers").innerHTML=card(`${name}高値（暫定）`,hi)+card(`${name}安値（暫定）`,lo);
+    return;
+  }
   const q=D.quotes||{};
   $("peers").innerHTML=["QQQ","QLD"].map(s=>{const x=q[s];if(!x||x.price==null)return`<div class="peer"><span class="t">${s}</span><span class="v">—</span></div>`;const c=x.prev?x.price/x.prev-1:null;
-    return`<div class="peer"><span class="t">${s}</span><span class="v">$${px(x.price)}</span><span class="c ${cls(c)}">${pct(c,2)}</span></div>`}).join("");
+    const d=x.prev?x.price-x.prev:null;
+    return`<div class="peer"><span class="t">${s}</span><span class="v">$${x.price.toFixed(2)}</span><span class="c ${cls(c)}">${d==null?"":(d>=0?"+":"−")+Math.abs(d).toFixed(2)}（${pct(c,2)}）</span></div>`}).join("");
 }
 
 /* ---------- tab 1: candles ---------- */
@@ -290,6 +332,35 @@ function renderRangeButtons(){
 function shownBars(){
   const all=bars(state.tf);const r=RANGES[state.tf].find(x=>x[0]===state.range[state.tf])||RANGES[state.tf][0];
   return r[2]?all.slice(-r[2]):all;
+}
+// TQQQ, QLD and QQQ closes over the shown period, as % change from the first bar where all three exist
+function renderCompare(B){
+  const el=$("pchart");
+  const i0=B.findIndex(b=>b.qc!=null&&b.lc!=null);
+  const S=[["TQQQ","tqqq","c"],["QLD","qld","lc"],["QQQ","qqq","qc"]];
+  $("pleg").innerHTML=S.map(([n,k])=>`<span><i style="background:${C[k]}"></i>${n}</span>`).join("");
+  if(i0<0){el.innerHTML=`<div class="empty" style="padding:30px 10px">この期間には QQQ・QLD のデータがありません</div>`;$("pread").innerHTML="";el._geo=null;return}
+  const base=Object.fromEntries(S.map(([n,,f])=>[n,B[i0][f]]));
+  const R=S.map(([n,k,f])=>({n,k,v:B.map((b,i)=>i<i0||b[f]==null?null:b[f]/base[n])}));
+  const W=Math.max(300,el.clientWidth), narrow=W<560, H=narrow?Math.round(W*.8):360;
+  const ML=6,MR=50,MT=8,MB=22, PW=W-ML-MR, PH=H-MT-MB, n=B.length, band=PW/n, x=i=>ML+band*(i+.5);
+  const all=R.flatMap(r=>r.v.filter(v=>v!=null)), lo=d3.min(all), hi=d3.max(all), log=state.sc==="log";
+  const y=(log?d3.scaleLog():d3.scaleLinear()).domain(log?[lo*.95,hi*1.05]:[lo-(hi-lo)*.04,hi+(hi-lo)*.04]).range([MT+PH,MT]);
+  if(!log)y.nice();
+  const fmtp=v=>{const p=(v-1)*100;if(Math.abs(p)<1e-9)return"0%";return(p>0?"+":p<0?"−":"")+(Math.abs(p)>=1000?Math.round(Math.abs(p)).toLocaleString():Math.abs(p)>=100?Math.abs(p).toFixed(0):Math.abs(p).toFixed(Math.abs(p)>=10?0:1))+"%"};
+  const dm=y.domain(), ticks=log&&dm[1]/dm[0]>4?logTicks(dm):d3.scaleLinear().domain(dm).ticks(log?6:5).filter(v=>v>0);
+  let g="";ticks.forEach(v=>{g+=`<line class="grid" x1="${ML}" x2="${ML+PW}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${ML+PW+6}" y="${y(v)+4}">${fmtp(v)}</text>`});
+  if(y.domain()[0]<1&&y.domain()[1]>1)g+=`<line x1="${ML}" x2="${ML+PW}" y1="${y(1)}" y2="${y(1)}" stroke="${C.muted}"/>`;
+  let lastLab="";const span=(B[n-1].t-B[0].t)/864e5;
+  B.forEach((b,i)=>{const lab=span>800?b.d.slice(0,4):b.d.slice(0,7);if(lab!==lastLab){const show=span>800?(+lab%(span>3000?2:1)===0):(+b.d.slice(5,7)%(span>300?3:1)===0);if(show&&i>0)g+=`<text class="ax" x="${x(i)}" y="${H-6}" text-anchor="middle">${span>800?"’"+lab.slice(2):(+lab.slice(5)===1?lab.slice(2,4)+"/1":+lab.slice(5)+"月")}</text>`}lastLab=lab});
+  let p="";[...R].reverse().forEach(r=>{let d="";r.v.forEach((v,i)=>{if(v==null)return;d+=(d?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)});p+=`<path d="${d}" fill="none" stroke="${C[r.k]}" stroke-width="${r.n==="TQQQ"?2:1.7}" stroke-linejoin="round"/>`});
+  const sel=state.pi!=null&&state.pi<n?state.pi:null;let xh="";
+  if(sel!=null){xh=`<line class="xh" x1="${x(sel)}" x2="${x(sel)}" y1="${MT}" y2="${MT+PH}"/>`;R.forEach(r=>{if(r.v[sel]!=null)xh+=`<circle cx="${x(sel)}" cy="${y(r.v[sel])}" r="3.5" fill="${C[r.k]}" stroke="var(--panel)" stroke-width="1.5"/>`})}
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="TQQQ・QLD・QQQの騰落率の比較">${g}${p}${xh}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
+  el._geo={ML,PW,n};
+  const k=sel!=null&&sel>=i0?sel:n-1, b=B[k];
+  const lbl=state.tf==="d"?b.d:state.tf==="w"?`${b.d}〜${b.last.slice(5)}`:b.d.slice(0,7);
+  $("pread").innerHTML=`<div class="rrow"><b>${lbl}</b><span>起点 ${state.tf==="m"?B[i0].d.slice(0,7):B[i0].d}</span></div><div class="rrow">${R.map(r=>`<span>${r.n} <b>${r.v[k]==null?"—":fmtp(r.v[k])}</b></span>`).join("")}</div>`;
 }
 function renderCandles(){
   const el=$("cchart");const B=shownBars();if(!B.length){el.innerHTML="";return}
@@ -319,8 +390,9 @@ function renderCandles(){
   if(ci!=null)xh=`<line class="xh" x1="${x(ci)}" x2="${x(ci)}" y1="${MT}" y2="${MT+PH}"/>`;
   el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="TQQQのローソク足チャート">${g}${c}${f}${xh}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
   el._geo={ML,PW,n};
-  const b=B[ci!=null?ci:n-1];const lbl=state.tf==="d"?b.d:state.tf==="w"?`${b.d}〜${b.last}`:b.d.slice(0,7);
-  $("cread").innerHTML=`<b>${lbl}</b>　始 ${px(b.o)}　高 ${px(b.h)}　安 ${px(b.l)}　終 <b>${px(b.c)}</b>${fit?`　近似線 ${px(fit.f(yrs(b)))}`:""}`;
+  const b=B[ci!=null?ci:n-1];const lbl=state.tf==="d"?b.d:state.tf==="w"?`${b.d}〜${b.last.slice(5)}`:b.d.slice(0,7);
+  // always two rows, so the chart below never shifts
+  $("cread").innerHTML=`<div class="rrow"><b>${lbl}</b><span>終 <b>${px(b.c)}</b></span>${fit?`<span>近似線 ${px(fit.f(yrs(b)))}</span>`:""}</div><div class="rrow"><span>始 ${px(b.o)}</span><span>高 ${px(b.h)}</span><span>安 ${px(b.l)}</span></div>`;
   // fit facts
   if(fit){const lastB=B[n-1];const dev=lastB.c/fit.f(yrs(lastB))-1;
     $("cfit").innerHTML=`<div class="fact wide"><div class="l">近似曲線</div><div class="v eq">y = ${fit.a.toPrecision(4)}·e<sup>${fit.b.toFixed(4)}x</sup></div><div class="s">x＝期間の始まりからの年数</div></div>
@@ -328,6 +400,7 @@ function renderCandles(){
      <div class="fact"><div class="l">R²（対数で計算）</div><div class="v">${fit.r2.toFixed(3)}</div><div class="s">1に近いほど良い</div></div>
      <div class="fact"><div class="l">近似線との差</div><div class="v ${cls(dev)}">${pct(dev)}</div><div class="s">近似線 $${px(fit.f(yrs(lastB)))}</div></div>`}
   else $("cfit").innerHTML="";
+  renderCompare(B);
 }
 const tickFmt=v=>String(+v.toPrecision(3));
 function logTicks([a,b]){
@@ -355,8 +428,7 @@ function renderDist(){
   $("dstats").innerHTML=`<div class="fact"><div class="l">平均（算術）</div><div class="v ${cls(mean)}">${pct(mean,2)}</div><div class="s">月次</div></div>
    <div class="fact"><div class="l">中央値</div><div class="v ${cls(med)}">${pct(med,2)}</div><div class="s">月次</div></div>
    <div class="fact"><div class="l">幾何平均</div><div class="v ${cls(geo)}">${pct(geo,2)}</div><div class="s">年率 ${pct((1+geo)**12-1)}</div></div>
-   <div class="fact"><div class="l">月数</div><div class="v">${n}</div><div class="s">${rets[0].k}〜${rets[n-1].k} · 標準偏差 ${pctAbs(sd)}</div></div>`;
-  $("dsub").textContent=`2.5%刻み · ${n}ヶ月`;
+   <div class="fact"><div class="l">月数</div><div class="v">${n}</div><div class="s">${rets[0].k.slice(2).replace("-","/")}〜${rets[n-1].k.slice(2).replace("-","/")}<br>σ ${pctAbs(sd)}</div></div></div>`;
   // bins of 2.5%
   const w=.025, b0=Math.floor(Math.min(d3.min(rs),cur?cur.r:0)/w), b1=Math.floor(Math.max(d3.max(rs),cur?cur.r:0)/w);
   const bins=[];for(let b=b0;b<=b1;b++)bins.push({lo:b*w,hi:(b+1)*w,c:0,ms:[]});
@@ -380,8 +452,9 @@ function renderDist(){
   el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="TQQQの月次騰落率の分布">${g}${bars}${gl}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
   el._geo={ML,PW,n:bins.length,bins};
   const show=state.di!=null&&bins[state.di]?bins[state.di]:null;
-  $("dread").innerHTML=show?`<b>${pct(show.lo)} 〜 ${pct(show.hi)}</b>　${show.c}ヶ月${show.ms.length?"："+show.ms.slice(-6).map(m=>m.k.replace("-","/")).join("、")+(show.ms.length>6?" ほか":""):""}`
-    :cur?`<b>今月（${cur.k.replace("-","/")}、途中）</b>　${pct(cur.r)}　▼の棒に入っています`:"棒をタップすると、その範囲に入った月が出ます";
+  // below the chart, so the chart never moves; every month in the bar, oldest first, with its return
+  $("dread").innerHTML=show?`<div class="dhead"><b>${pct(show.lo)} 〜 ${pct(show.hi)}</b><span>${show.c}ヶ月</span></div>${show.ms.length?`<div class="dmonths">${show.ms.map(m=>`<span><i>${m.k.replace("-","/")}</i>${pct(m.r)}</span>`).join("")}</div>`:""}`
+    :cur?`<div class="dhead"><b>今月（${cur.k.replace("-","/")}、途中）</b><span>${pct(cur.r)}　▼の棒</span></div>`:`<div class="dhead"><span>棒をタップすると、その範囲に入った月が出ます</span></div>`;
   renderKelly(rs);
   // multiples
   const ys=[1,5,10,15,20];
@@ -419,13 +492,17 @@ function renderKelly(rs){
   let g="";Y.ticks(5).forEach(v=>{g+=`<line class="grid" x1="${ML}" x2="${ML+PW}" y1="${Y(v)}" y2="${Y(v)}"/><text class="ax" x="${ML-6}" y="${Y(v)+4}" text-anchor="end">${Math.round(v*100)}%</text>`});
   X.ticks(6).forEach(v=>{g+=`<text class="ax" x="${X(v)}" y="${H-8}" text-anchor="middle">${v}倍</text>`});
   const line=`<path d="${pts.map((q,i)=>(i?"L":"M")+X(q[0]*LEV).toFixed(1)+" "+Y(q[1]).toFixed(1)).join("")}" fill="none" stroke="${C.tqqq}" stroke-width="2.2"/>`;
-  const mark=(f,lab,ty)=>`<line class="xh" x1="${X(f*LEV)}" x2="${X(f*LEV)}" y1="${MT}" y2="${MT+PH}"/><circle cx="${X(f*LEV)}" cy="${Y(ann(f))}" r="4" fill="${C.tqqq}" stroke="var(--panel)" stroke-width="1.5"/><text class="ax" x="${X(f*LEV)+4}" y="${ty}" style="fill:var(--ink2);font-weight:700">${lab}</text>`;
-  let mk=mark(half,"ハーフ",MT+10)+mark(best,"ケリー",MT+10);if(Math.abs(best-1)>.1&&Math.abs(half-1)>.1)mk+=mark(1,"3倍",MT+PH-6);
-  const sel=state.ki;let xh="";if(sel!=null&&pts[sel])xh=`<line class="xh" x1="${X(pts[sel][0]*LEV)}" x2="${X(pts[sel][0]*LEV)}" y1="${MT}" y2="${MT+PH}" style="stroke:var(--ink)"/>`;
+  // reference marks: thin solid pink lines (selection uses the common white dashes); labels sit on the side away from the neighbouring mark
+  const mark=(f,lab,ty,left)=>{const xx=X(f*LEV);return`<line x1="${xx}" x2="${xx}" y1="${MT}" y2="${MT+PH}" stroke="${C.tqqq}" stroke-width="1.5" opacity=".45"/><circle cx="${xx}" cy="${Y(ann(f))}" r="4" fill="${C.tqqq}" stroke="var(--panel)" stroke-width="1.5"/><text class="ax" x="${left?xx-5:xx+5}" y="${ty}" text-anchor="${left?"end":"start"}" style="fill:var(--ink2);font-weight:700">${lab}</text>`};
+  const show3=Math.abs(best-1)>.05&&Math.abs(half-1)>.05;
+  let mk=mark(half,"ハーフ",MT+10,half<1)+mark(best,"ケリー",MT+10,best<1&&half>=1);if(show3)mk+=mark(1,"3倍",MT+PH-6,false);
+  // the selected position: the same white dashes as every other chart
+  const sel=state.ki;let xh="";if(sel!=null&&pts[sel]){const sx=X(pts[sel][0]*LEV);xh=`<line class="xh" x1="${sx}" x2="${sx}" y1="${MT}" y2="${MT+PH}"/><circle cx="${sx}" cy="${Y(pts[sel][1])}" r="4.5" fill="${C.ink}" stroke="var(--panel)" stroke-width="1.5"/>`}
   el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="実効露出と年率成長">${g}${line}${mk}${xh}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
   el._geo={ML,PW,n:pts.length,step:true};
   const q=sel!=null&&pts[sel]?pts[sel]:[best,ann(best)];
-  $("kread").innerHTML=`対Nasdaq100 <b>${x(q[0])}</b>（TQQQ ${(q[0]*100).toFixed(1)}%）　年率成長 <b>${pct(q[1])}</b>　最悪の月 <b>${pct(q[0]*worst)}</b>`;
+  const nw=t=>`<span style="white-space:nowrap">${t}</span>`;
+  $("kread").innerHTML=[nw(`対Nasdaq100 <b>${x(q[0])}</b>（TQQQ ${(q[0]*100).toFixed(1)}%）`),nw(`年率成長 <b>${pct(q[1])}</b>`),nw(`最悪の月 <b>${pct(q[0]*worst)}</b>`)].join("　");
 }
 
 /* ---------- tab 3: holding period ---------- */
@@ -456,7 +533,10 @@ function lineChart(el,read,{xs,series,yfmt,ylab,sel}){
   let g="";y.ticks(5).forEach(v=>{g+=`<line class="grid" x1="${ML}" x2="${ML+PW}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${ML-6}" y="${y(v)+4}" text-anchor="end">${yfmt(v)}</text>`});
   xs.forEach((v,i)=>{g+=`<text class="ax" x="${x(i)}" y="${H-8}" text-anchor="middle">${v}</text>`});
   g+=`<text class="ax" x="${ML+PW/2}" y="${H+8}" text-anchor="middle">${ylab}</text>`;
-  let p="";series.forEach(s=>{const d=s.vals.map((v,i)=>v==null?null:[x(i),y(v)]).reduce((acc,pt)=>{if(!pt)return acc+"|";return acc+(acc===""||acc.endsWith("|")?"M":"L")+pt[0].toFixed(1)+" "+pt[1].toFixed(1)},"").replace(/\|/g,"");
+  let p="";series.forEach(s=>{let d;
+    if(s.fn){ // a fitted curve: drawn from its formula at fine steps, not joined point to point
+      const pts=[];const n0=xs.length-1;for(let k=0;k<=n0*20;k++){const i=k/20;pts.push((k?"L":"M")+x(i).toFixed(1)+" "+y(s.fn(xs[0]+i)).toFixed(1))}d=pts.join("");
+    }else d=s.vals.map((v,i)=>v==null?null:[x(i),y(v)]).reduce((acc,pt)=>{if(!pt)return acc+"|";return acc+(acc===""||acc.endsWith("|")?"M":"L")+pt[0].toFixed(1)+" "+pt[1].toFixed(1)},"").replace(/\|/g,"");
     p+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.dash?1.6:2.2}" ${s.dash?'stroke-dasharray="6 4"':""} stroke-linejoin="round" stroke-linecap="round"/>`;
     s.vals.forEach((v,i)=>{if(v!=null&&!s.dash)p+=`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${sel===i?4.5:2.6}" fill="${s.color}" stroke="var(--panel)" stroke-width="1.5"/>`});
     const li=s.vals.length-1;if(!s.dash&&s.vals[li]!=null)p+=`<text x="${ML+PW+6}" y="${y(s.vals[li])+4}" class="ax" style="fill:var(--ink2);font-weight:700">${s.name}</text>`});
@@ -475,7 +555,7 @@ function declutter(svgEl){
 function renderHold(){
   const S=holdStats(state.hm);const xs=[...Array(10)].map((_,i)=>i+1);const sel=state.hi;
   const fitVals=S.fit?xs.map(n=>S.fit.f(n)):xs.map(()=>null);
-  const ser=SYMS.map(([s,k])=>({name:s,color:C[k],vals:S[s].res.map(r=>r.m)})).concat([{name:"TQQQ近似",color:C.ink,vals:fitVals,dash:true}]);
+  const ser=SYMS.map(([s,k])=>({name:s,color:C[k],vals:S[s].res.map(r=>r.m)})).concat([{name:"TQQQ近似",color:C.ink,vals:fitVals,dash:true,fn:S.fit?S.fit.f:null}]);
   lineChart($("hchart1"),$("hread1"),{xs,series:ser,yfmt:(v,full)=>full?mult(v):v+"倍",ylab:"保有年数",sel});
   declutter($("hchart1").querySelector("svg"));
   const ser2=SYMS.map(([s,k])=>({name:s,color:C[k],vals:S[s].res.map(r=>r.cagr)}));
@@ -501,6 +581,7 @@ function renderControls(){
 }
 function renderTab(){
   ["chart","dist","hold"].forEach(t=>$("t-"+t).hidden=state.tab!==t);
+  if(D)renderPeers();
   if(state.tab==="chart")renderCandles();else if(state.tab==="dist")renderDist();else renderHold();
 }
 function renderAll(){
@@ -548,9 +629,17 @@ function scrub(el,onIndex,onLeave){
 }
 scrub($("cchart"),i=>{if(i!==state.ci){state.ci=i;renderCandles()}},()=>{state.ci=null;renderCandles()});
 scrub($("dchart"),i=>{if(i!==state.di){state.di=i;renderDist()}},()=>{state.di=null;renderDist()});
+scrub($("pchart"),i=>{if(i!==state.pi){state.pi=i;renderCandles()}},()=>{state.pi=null;renderCandles()});
 scrub($("kchart"),i=>{if(i!==state.ki){state.ki=i;renderDist()}},()=>{state.ki=null;renderDist()});
 scrub($("hchart1"),i=>{if(i!==state.hi){state.hi=i;renderHold()}},()=>{state.hi=null;renderHold()});
 scrub($("hchart2"),i=>{if(i!==state.hi){state.hi=i;renderHold()}},()=>{state.hi=null;renderHold()});
+// touching anywhere outside a chart clears the selection
+document.addEventListener("pointerdown",e=>{
+  if(e.target.closest(".chart"))return;
+  if(state.ci==null&&state.di==null&&state.hi==null&&state.ki==null&&state.pi==null)return;
+  state.ci=state.di=state.hi=state.ki=state.pi=null;
+  if(D)renderTab();
+});
 let rt;new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(()=>{if(D)renderTab()},80)}).observe($("app"));
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")load(false)});
 setInterval(()=>{if(document.visibilityState==="visible")load(false)},5*60*1000);
