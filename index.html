@@ -626,7 +626,17 @@ async function liveQuotes(d){
     if(newest){const iso=new Date(newest*1000).toISOString().replace(/\.\d+Z$/,"Z");if(!d.updatedAt||iso>d.updatedAt)d.updatedAt=iso}
   }finally{clearTimeout(to)}
 }
+// When a newer version of the app is published, reload to pick it up (the version is the
+// service worker's cache name; bump both together).
+const APP_VER="tqqq-v12";
+async function newerApp(){
+  try{const t=await(await fetch("sw.js?ts="+Date.now(),{cache:"no-store"})).text();const m=t.match(/CACHE = "([^"]+)"/);
+    // at most one reload per new version, in case the page itself is still served from a cache
+    if(m&&m[1]!==APP_VER&&sessionStorage.getItem("reloadedFor")!==m[1]){sessionStorage.setItem("reloadedFor",m[1]);location.reload();return true}}catch(e){}
+  return false;
+}
 async function load(manual){
+  if(await newerApp())return;
   if(loading)return;loading=true;$("refresh").classList.add("spin");
   try{
     const r=await fetch("data/tqqq.json?ts="+Date.now(),{cache:"no-store"});
