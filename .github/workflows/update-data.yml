@@ -2,8 +2,8 @@ name: Update TQQQ data
 
 on:
   schedule:
-    # US market hours in UTC (covers both daylight-saving and standard time), every 15 minutes, Mon-Fri (off the quarter-hour, when GitHub is less busy)
-    - cron: "4,19,34,49 13-21 * * 1-5"
+    # US market hours in UTC (covers both daylight-saving and standard time), every 5 minutes, Mon-Fri (off the round minutes, when GitHub is less busy)
+    - cron: "2-59/5 13-21 * * 1-5"
     # One more pass after the close, for late final prints
     - cron: "43 22 * * 1-5"
   workflow_dispatch:
