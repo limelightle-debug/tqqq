@@ -1,5 +1,5 @@
 // Offline shell + latest data. Bump CACHE when the app files change.
-const CACHE = "tqqq-v10";
+const CACHE = "tqqq-v11";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./d3.min.js",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png", "./icons/avatar.png", "./icons/lab.jpg"];
 

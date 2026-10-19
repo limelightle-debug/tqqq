@@ -595,6 +595,37 @@ function renderAll(){
 
 /* ---------- load ---------- */
 let loading=false;
+// Live quotes from Finnhub (free key; it is visible in this page). They replace the latest
+// prices and today's bar from the published data, so the refresh button gets the newest values.
+const FINNHUB="dbb211pr01qrv06nsrngdbb211pr01qrv06nsro0";
+const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function etParts(t){
+  const o={};new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric",hourCycle:"h23"})
+    .formatToParts(new Date(t*1000)).forEach(x=>{o[x.type]=+x.value});return o;
+}
+async function liveQuotes(d){
+  const syms=["TQQQ","QQQ","QLD"],ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),6000);
+  try{
+    const qs=await Promise.all(syms.map(s=>fetch(`https://finnhub.io/api/v1/quote?symbol=${s}&token=${FINNHUB}`,{cache:"no-store",signal:ctl.signal}).then(r=>r.ok?r.json():null).catch(()=>null)));
+    const Q={};let newest=0;
+    qs.forEach((q,i)=>{
+      if(!q||!(q.c>0)||!q.t)return;
+      const e=etParts(q.t),n=e.year*10000+e.month*100+e.day,mins=e.hour*60+e.minute,date=`${MON[e.month-1]} ${e.day}, ${e.year}`;
+      const open=mins>=570&&mins<960;
+      Q[syms[i]]={q,n};newest=Math.max(newest,q.t);
+      d.quotes=d.quotes||{};
+      d.quotes[syms[i]]={price:q.c,prev:q.pc,high:q.h,low:q.l,
+        time:open?`${date} ${(e.hour%12)||12}:${String(e.minute).padStart(2,"0")} ${e.hour<12?"AM":"PM"} ET`:`Closed at ${date}`};
+    });
+    const T=Q.TQQQ;
+    if(T&&T.q.o>0){
+      const last=d.daily[d.daily.length-1],q=T.q;
+      const row=[T.n,q.o,Math.max(q.h,q.c),Math.min(q.l,q.c),q.c,q.c,Q.QQQ&&Q.QQQ.n===T.n?Q.QQQ.q.c:(T.n===last[0]?last[6]:null),Q.QLD&&Q.QLD.n===T.n?Q.QLD.q.c:(T.n===last[0]?last[7]:null)];
+      if(T.n>last[0])d.daily.push(row);else if(T.n===last[0])d.daily[d.daily.length-1]=row;
+    }
+    if(newest){const iso=new Date(newest*1000).toISOString().replace(/\.\d+Z$/,"Z");if(!d.updatedAt||iso>d.updatedAt)d.updatedAt=iso}
+  }finally{clearTimeout(to)}
+}
 async function load(manual){
   if(loading)return;loading=true;$("refresh").classList.add("spin");
   try{
@@ -603,6 +634,7 @@ async function load(manual){
     if(!r.ok)throw new Error("HTTP "+r.status);
     const d=await r.json();
     if(!d||!Array.isArray(d.daily)||!d.years)throw new Error("bad");
+    try{await liveQuotes(d)}catch(e){}
     if(!D||d.updatedAt!==D.updatedAt||manual){setData(d);renderAll()}else renderStatus();
   }catch(e){
     if(!D){$("empty").innerHTML=e.message==="nodata"?"まだデータがありません。<br>GitHub の Actions で「Update TQQQ data」を一度実行すると表示されます。":"データを読み込めませんでした。通信状況を確認して、右上の↻で再読み込みしてください。";$("status").textContent="データなし"}
