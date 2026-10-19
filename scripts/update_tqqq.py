@@ -117,6 +117,15 @@ def nasdaq_quote(symbol):
     return q
 
 
+def quote_day(stamp):
+    """yyyymmdd of a Nasdaq timestamp such as "Oct 19, 2026 9:36 AM ET", or None."""
+    m = re.search(r"([A-Z][a-z]{2}) (\d{1,2}), (\d{4})", stamp or "")
+    if not m:
+        return None
+    mon = "JanFebMarAprMayJunJulAugSepOctNovDec".find(m.group(1))
+    return None if mon < 0 else int(m.group(3)) * 10000 + (mon // 3 + 1) * 100 + int(m.group(2))
+
+
 def year_stats(rows):
     out = {}
     for d, o, h, l, c in rows:
@@ -172,9 +181,10 @@ def update():
     years = {s: {y: {k: v[k] for k in ("lo", "hi", "end", "first", "last")} for y, v in store["years"][s].items()}
              for s in SYMBOLS}
 
-    quotes = {}
+    quotes, last_hist = {}, {}
     for s in SYMBOLS:
         rows = nasdaq_daily(s)
+        last_hist[s] = rows[-1][0]
         time.sleep(1)
         if s == "TQQQ":
             f = split_factor({d: v[3] for d, v in daily.items()}, rows)
@@ -210,6 +220,20 @@ def update():
             last = rows[-1]
             quotes[s] = {"price": last[4], "prev": rows[-2][4], "time": str(last[0])}
         time.sleep(1)
+
+    # Today's bar from the regular-session quote, until Nasdaq.com publishes the official daily row
+    # (which then replaces it). The open is the first price seen today, so it is approximate.
+    q = quotes["TQQQ"]
+    qd = quote_day(q.get("time"))
+    if qd and qd > last_hist["TQQQ"]:
+        before = daily.get(qd)
+        o = before[0] if before else q["price"]
+        hs = [x for x in (q.get("high"), q["price"], before and before[1]) if x]
+        ls = [x for x in (q.get("low"), q["price"], before and before[2]) if x]
+        daily[qd] = [o, max(hs), min(ls), q["price"]]
+        for s in ("QQQ", "QLD"):
+            if quote_day(quotes[s].get("time")) == qd and qd > last_hist[s]:
+                closes[s][qd] = quotes[s]["price"]
 
     def cl(sym, d):
         v = closes[sym].get(d)

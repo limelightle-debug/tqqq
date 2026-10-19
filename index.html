@@ -296,13 +296,14 @@ function renderStatus(){
 function renderPrice(){
   const last=DAYS[DAYS.length-1];const qt=(D.quotes&&D.quotes.TQQQ)||{};
   const p=qt.price||last.c;const prev={c:qt.prev||DAYS[DAYS.length-2].c};const ch=p/prev.c-1;
+  // live while the quote carries a time of day in the regular session (today's bar is built from it)
   const md=x=>`${+x.slice(5,7)}/${+x.slice(8,10)}`;
-  const live=Math.abs(p-last.c)>1e-6;
-  const when=live?`最新値 · 日足は${md(last.d)}まで`:`${md(last.d)}の終値`;
+  const live=/\d:\d/.test(qt.time||"")&&!/closed/i.test(qt.time||"");
+  const when=live?"最新値":`${md(last.d)}の終値`;
   let ath=0;DAYS.forEach(x=>{if(x.h>ath)ath=x.h});
   // day's high and low: from the live quote while the market is open, otherwise the last daily bar
-  // (a live price without the day's high and low shows none, rather than the previous day's)
-  const dh=live?qt.high:last.h, dl=live?qt.low:last.l, hl=dh!=null&&dl!=null;
+  // (the last bar is today's while live, so its high and low are a fallback for the same day)
+  const dh=live&&qt.high!=null?qt.high:last.h, dl=live&&qt.low!=null?qt.low:last.l, hl=dh!=null&&dl!=null;
   $("price").innerHTML=`<div class="p"><small>$</small>${px(p)}</div><div class="pside"><div class="chg ${cls(ch)}">${ch>=0?"+":"−"}${Math.abs(p-prev.c).toFixed(2)}（${pct(ch,2)}）</div>${hl?`<div class="dhl"><span>高値 <b>${dh.toFixed(2)}</b></span><span>安値 <b>${dl.toFixed(2)}</b></span></div>`:""}</div>
    <div class="meta">${esc(when)} · 前日終値 $${px(prev.c)} · 上場来高値 $${px(ath)}（${pct(p/ath-1)}）</div>`;
   renderPeers();
