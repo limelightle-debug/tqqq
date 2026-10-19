@@ -619,14 +619,25 @@ document.addEventListener("click",e=>{
   if(b.id==="refresh")load(true);
 });
 // scrub: candles, histogram and line charts all map the pointer to the nearest index
+// Selecting a point: tap (or click) selects; sliding a finger sideways moves the selection;
+// a vertical swipe scrolls the page and leaves the selection as it is.
 function scrub(el,onIndex,onLeave){
-  let down=false;
+  let t=null;
   const at=e=>{const g=el._geo,svg=el.querySelector("svg");if(!g||!svg)return;const r=svg.getBoundingClientRect();const sx=(e.clientX-r.left)*(svg.viewBox.baseVal.width/r.width);
     const f=(sx-g.ML)/g.PW;const i=g.step?Math.round(f*(g.n-1)):Math.floor(f*g.n);onIndex(Math.max(0,Math.min(g.n-1,i)))};
-  el.addEventListener("pointerdown",e=>{if(e.target.closest(".hit")){down=true;at(e)}});
-  el.addEventListener("pointermove",e=>{if(down||e.pointerType==="mouse")at(e)});
-  addEventListener("pointerup",()=>{down=false});
-  el.addEventListener("pointerleave",e=>{if(e.pointerType==="mouse")onLeave()});
+  el.addEventListener("pointerdown",e=>{if(e.target.closest(".hit"))t={x:e.clientX,y:e.clientY,id:e.pointerId,slide:false}});
+  el.addEventListener("pointermove",e=>{
+    if(e.pointerType==="mouse"&&!t){at(e);return}
+    if(!t||e.pointerId!==t.id)return;
+    const dx=e.clientX-t.x,dy=e.clientY-t.y;
+    if(!t.slide&&Math.abs(dx)>6&&Math.abs(dx)>Math.abs(dy))t.slide=true;
+    if(t.slide)at(e);
+  });
+  el.addEventListener("pointerup",e=>{
+    if(t&&e.pointerId===t.id&&(t.slide||Math.hypot(e.clientX-t.x,e.clientY-t.y)<10))at(e);
+    t=null;
+  });
+  el.addEventListener("pointercancel",()=>{t=null});
 }
 scrub($("cchart"),i=>{if(i!==state.ci){state.ci=i;renderCandles()}},()=>{state.ci=null;renderCandles()});
 scrub($("dchart"),i=>{if(i!==state.di){state.di=i;renderDist()}},()=>{state.di=null;renderDist()});
@@ -634,13 +645,17 @@ scrub($("pchart"),i=>{if(i!==state.pi){state.pi=i;renderCandles()}},()=>{state.p
 scrub($("kchart"),i=>{if(i!==state.ki){state.ki=i;renderDist()}},()=>{state.ki=null;renderDist()});
 scrub($("hchart1"),i=>{if(i!==state.hi){state.hi=i;renderHold()}},()=>{state.hi=null;renderHold()});
 scrub($("hchart2"),i=>{if(i!==state.hi){state.hi=i;renderHold()}},()=>{state.hi=null;renderHold()});
-// touching anywhere outside a chart clears the selection
-document.addEventListener("pointerdown",e=>{
-  if(e.target.closest(".chart"))return;
+// a tap outside the charts clears the selection (a swipe to scroll does not)
+let tapOut=null;
+document.addEventListener("pointerdown",e=>{tapOut=e.target.closest(".chart")?null:{x:e.clientX,y:e.clientY,id:e.pointerId}},true);
+document.addEventListener("pointercancel",()=>{tapOut=null},true);
+document.addEventListener("pointerup",e=>{
+  const t=tapOut;tapOut=null;
+  if(!t||e.pointerId!==t.id||Math.hypot(e.clientX-t.x,e.clientY-t.y)>=10)return;
   if(state.ci==null&&state.di==null&&state.hi==null&&state.ki==null&&state.pi==null)return;
   state.ci=state.di=state.hi=state.ki=state.pi=null;
   if(D)renderTab();
-});
+},true);
 let rt;new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(()=>{if(D)renderTab()},80)}).observe($("app"));
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")load(false)});
 setInterval(()=>{if(document.visibilityState==="visible")load(false)},5*60*1000);
