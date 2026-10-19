@@ -301,8 +301,9 @@ function renderPrice(){
   const when=live?`最新値 · 日足は${md(last.d)}まで`:`${md(last.d)}の終値`;
   let ath=0;DAYS.forEach(x=>{if(x.h>ath)ath=x.h});
   // day's high and low: from the live quote while the market is open, otherwise the last daily bar
-  const dh=qt.high!=null&&live?qt.high:last.h, dl=qt.low!=null&&live?qt.low:last.l;
-  $("price").innerHTML=`<div class="p"><small>$</small>${px(p)}</div><div class="pside"><div class="chg ${cls(ch)}">${ch>=0?"+":"−"}${Math.abs(p-prev.c).toFixed(2)}（${pct(ch,2)}）</div><div class="dhl"><span>高値 <b>${dh.toFixed(2)}</b></span><span>安値 <b>${dl.toFixed(2)}</b></span></div></div>
+  // (a live price without the day's high and low shows none, rather than the previous day's)
+  const dh=live?qt.high:last.h, dl=live?qt.low:last.l, hl=dh!=null&&dl!=null;
+  $("price").innerHTML=`<div class="p"><small>$</small>${px(p)}</div><div class="pside"><div class="chg ${cls(ch)}">${ch>=0?"+":"−"}${Math.abs(p-prev.c).toFixed(2)}（${pct(ch,2)}）</div>${hl?`<div class="dhl"><span>高値 <b>${dh.toFixed(2)}</b></span><span>安値 <b>${dl.toFixed(2)}</b></span></div>`:""}</div>
    <div class="meta">${esc(when)} · 前日終値 $${px(prev.c)} · 上場来高値 $${px(ath)}（${pct(p/ath-1)}）</div>`;
   renderPeers();
 }

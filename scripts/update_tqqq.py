@@ -3,10 +3,11 @@
 Runs in GitHub Actions. Nasdaq.com serves the last ten years of daily prices, so the file
 keeps everything it has ever received and adds the new days on each run. The older history
 (TQQQ from its 2010 listing, QQQ and QLD yearly highs and lows) came with the first version
-of the file. Prices are split-adjusted; dividends are not included.
+of the file; QQQ and QLD daily closes before October 2016 come from data/qqq_qld_base.json. Prices are split-adjusted; dividends are not included.
 Writes the file only when the data changed, and leaves data/status.json with the outcome.
 """
 import json
+import re
 import statistics
 import sys
 import time
@@ -19,6 +20,7 @@ import requests
 DATA = Path(__file__).resolve().parent.parent / "data"
 OUT = DATA / "tqqq.json"
 STATUS = DATA / "status.json"
+BASE = DATA / "qqq_qld_base.json"  # QQQ and QLD daily closes before Nasdaq.com's ten years
 SYMBOLS = ("TQQQ", "QQQ", "QLD")
 NY = ZoneInfo("America/New_York")
 
@@ -76,12 +78,43 @@ def nasdaq_daily(symbol):
     return rows
 
 
+def regular_session(stamp):
+    """True for an official close ("Oct 16, 2026") or a trade stamped 9:30-16:00 ET.
+    Pre-market and after-hours prices are left out, so the app shows the regular session only."""
+    m = re.search(r"(\d{1,2}):(\d{2})(?::\d{2})?\s*([AP]M)", stamp or "", re.I)
+    if not m:
+        return bool(stamp)
+    h, mi, ap = int(m.group(1)) % 12, int(m.group(2)), m.group(3).upper()
+    t = (h + (12 if ap == "PM" else 0)) * 60 + mi
+    return 9 * 60 + 30 <= t <= 16 * 60
+
+
 def nasdaq_quote(symbol):
+    """Latest regular-session price, or None outside it (the caller then uses the last daily close)."""
     j = get_json(f"https://api.nasdaq.com/api/quote/{symbol}/info?assetclass=etf")
-    p = (j.get("data") or {}).get("primaryData") or {}
+    data = j.get("data") or {}
+    p = None
+    for key in ("primaryData", "secondaryData"):
+        c = data.get(key) or {}
+        if c.get("lastSalePrice") and regular_session(c.get("lastTradeTimestamp")):
+            p = c
+            break
+    if p is None:
+        return None
     price = num(p["lastSalePrice"])
     chg = num(p.get("netChange") or 0)
-    return {"price": sig(price, 6), "prev": sig(price - chg, 6), "time": p.get("lastTradeTimestamp")}
+    q = {"price": sig(price, 6), "prev": sig(price - chg, 6), "time": p.get("lastTradeTimestamp")}
+    # today's high and low while the market is open ("$73.13/$67.43"; "N/A" when closed)
+    if re.search(r"\d:\d", q["time"] or ""):
+        try:
+            s = get_json(f"https://api.nasdaq.com/api/quote/{symbol}/summary?assetclass=etf")
+            hl = (((s.get("data") or {}).get("summaryData") or {}).get("TodayHighLow") or {}).get("value", "")
+            if "/" in hl:
+                hi, lo = (num(x) for x in hl.split("/"))
+                q.update(high=sig(hi, 6), low=sig(lo, 6))
+        except (RuntimeError, ValueError):
+            pass
+    return q
 
 
 def year_stats(rows):
@@ -128,6 +161,14 @@ def split_factor(old_by_date, new_rows):
 def update():
     store = json.loads(OUT.read_text(encoding="utf-8"))
     daily = {r[0]: r[1:5] for r in store["daily"]}
+    # QQQ and QLD closes kept on the same dates as TQQQ (columns 7 and 8 of each daily row)
+    closes = {"QQQ": {r[0]: r[6] for r in store["daily"] if len(r) > 6 and r[6] is not None},
+              "QLD": {r[0]: r[7] for r in store["daily"] if len(r) > 7 and r[7] is not None}}
+    if BASE.exists():
+        base = json.loads(BASE.read_text(encoding="utf-8"))
+        for s in ("QQQ", "QLD"):
+            for d, c in base.get(s, []):
+                closes[s].setdefault(d, c)
     years = {s: {y: {k: v[k] for k in ("lo", "hi", "end", "first", "last")} for y, v in store["years"][s].items()}
              for s in SYMBOLS}
 
@@ -154,15 +195,27 @@ def update():
                     print(f"{s}: rescaling stored years by {f:.4f}")
                     scale_years(years[s], f)
             years[s] = merge_years(years[s], new)
+            f = split_factor(closes[s], rows)
+            if f != 1.0:
+                print(f"{s}: rescaling stored closes by {f:.4f}")
+                closes[s] = {d: c * f for d, c in closes[s].items()}
+            for d, o, h, l, c in rows:
+                closes[s][d] = c
         try:
             quotes[s] = nasdaq_quote(s)
-        except RuntimeError as e:  # the day's last close is a fine fallback
+        except RuntimeError as e:
             print(f"warning: quote {s}: {e}", file=sys.stderr)
+            quotes[s] = None
+        if quotes[s] is None:  # outside the regular session: the last daily close
             last = rows[-1]
             quotes[s] = {"price": last[4], "prev": rows[-2][4], "time": str(last[0])}
         time.sleep(1)
 
-    out_rows = [[d, sig(o), sig(h), sig(l), sig(c), sig(c)] for d, (o, h, l, c) in sorted(daily.items())]
+    def cl(sym, d):
+        v = closes[sym].get(d)
+        return None if v is None else sig(v)
+    out_rows = [[d, sig(o), sig(h), sig(l), sig(c), sig(c), cl("QQQ", d), cl("QLD", d)]
+                for d, (o, h, l, c) in sorted(daily.items())]
     out_years = {s: {y: {"lo": sig(v["lo"]), "hi": sig(v["hi"]), "end": sig(v["end"]),
                          "first": v["first"], "last": v["last"], "full": v["first"] % 10000 <= 110}
                      for y, v in sorted(years[s].items())} for s in SYMBOLS}
