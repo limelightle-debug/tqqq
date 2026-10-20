@@ -43,7 +43,7 @@ h1{margin:0;font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size
 .pill.open i{background:var(--up)}
 .pill.warn{color:var(--down)}
 .tbtns{display:flex;align-items:center;gap:8px;flex:none}
-.lang{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink2);font:700 12px/1 inherit;letter-spacing:.04em;height:34px;padding:0 10px;border-radius:8px;cursor:pointer}
+
 .h2t{font-style:normal}
 .refresh{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);width:40px;height:40px;border-radius:50%;font-size:19px;line-height:1;cursor:pointer;flex:none}
 .refresh.spin{animation:spin .9s linear infinite}
@@ -127,6 +127,7 @@ tr.hl td{background:var(--chip)}
 .labname img{width:36px;height:36px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 1px var(--line)}
 @media (max-width:420px){.price .p{font-size:40px}.seg button{padding:8px 9px;font-size:12.5px}}
 @media (prefers-reduced-motion:reduce){.refresh.spin{animation:none}}
+.langseg{display:flex;background:var(--chip,#1a1a36);border:1px solid var(--line);border-radius:8px;padding:2px;gap:2px;flex:none}.langseg button{appearance:none;border:0;background:transparent;color:var(--muted);font:700 12px/1 inherit;letter-spacing:.04em;padding:7px 9px;border-radius:6px;cursor:pointer}.langseg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.4)}
 </style>
 </head>
 <body>
@@ -140,7 +141,7 @@ tr.hl td{background:var(--chip)}
           <div class="status" id="status" data-i18n="loading">読み込み中…</div>
         </div>
       </div>
-      <span class="tbtns"><button type="button" class="lang" id="lang" aria-label="Language"></button><button type="button" class="refresh" id="refresh" aria-label="Refresh">↻</button></span>
+      <span class="tbtns"><div class="langseg" id="lang" role="group" aria-label="Language"><button type="button" data-lang="ja">JP</button><button type="button" data-lang="en">EN</button></div><button type="button" class="refresh" id="refresh" aria-label="Refresh">↻</button></span>
     </div>
     <div class="controls">
       <div class="seg" id="tabs" role="group" aria-label="表示">
@@ -274,7 +275,7 @@ const axMonth=lab=>+lab.slice(5)===1?lab.slice(2,4)+"/1":tr("monthN",+lab.slice(
 function applyLang(){
   document.documentElement.lang=LANG;
   document.querySelectorAll("[data-i18n]").forEach(e=>{e.innerHTML=tr(e.dataset.i18n)});
-  const b=document.getElementById("lang");if(b)b.textContent=tr("switchTo");
+  document.querySelectorAll("#lang [data-lang]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lang===LANG));
 }
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const store={get(k,d){try{const v=localStorage.getItem("tqqq."+k);return v==null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem("tqqq."+k,v)}catch(e){}}};
@@ -664,7 +665,7 @@ async function liveQuotes(d){
 }
 // When a newer version of the app is published, reload to pick it up (the version is the
 // service worker's cache name; bump both together).
-const APP_VER="tqqq-v14";
+const APP_VER="tqqq-v15";
 async function newerApp(){
   try{const t=await(await fetch("sw.js?ts="+Date.now(),{cache:"no-store"})).text();const m=t.match(/CACHE = "([^"]+)"/);
     // at most one reload per new version, in case the page itself is still served from a cache
@@ -739,7 +740,7 @@ let rt;new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(()=>{if(D)renderTa
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")load(false)});
 setInterval(()=>{if(document.visibilityState==="visible")load(false)},5*60*1000);
 setInterval(()=>{if(D)renderStatus()},60*1000);
-$("lang").addEventListener("click",()=>{LANG=LANG==="ja"?"en":"ja";try{localStorage.setItem("lang",LANG)}catch(e){}applyLang();renderAll()});
+$("lang").addEventListener("click",e=>{const b=e.target.closest("[data-lang]");if(!b||b.dataset.lang===LANG)return;LANG=b.dataset.lang;try{localStorage.setItem("lang",LANG)}catch(e){}applyLang();renderAll()});
 applyLang();renderAll();load(false);
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
 </script>
