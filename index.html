@@ -270,7 +270,8 @@ const I18N={
   fitName:"TQQQ fit",yearsN:n=>`${n}y`,holdYears:"Years held",fitCol:"Fit",yearCol:"Yrs",lhSub:"Buy at a year's low, sell at the high N years later",eeSub:"Buy at a year end, sell at the year end N years later",
   noData:"No data yet.<br>Run “Update TQQQ data” once in GitHub Actions.",loadFail:"Could not load the data. Check the connection and reload with ↻ at the top right.",noDataShort:"No data"}};
 const tr=(k,...a)=>{const v=I18N[LANG][k]??I18N.ja[k];return typeof v==="function"?v(...a):v};
-const fmtTime=(d,o)=>new Intl.DateTimeFormat(LANG==="ja"?"ja-JP":"en-US",LANG==="ja"?{timeZone:"Asia/Tokyo",...o}:{hourCycle:"h23",...o}).format(d);
+// times: Japanese in Japan time; English in New York time (the market's), marked ET
+const fmtTime=(d,o)=>LANG==="ja"?new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",...o}).format(d):new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",hourCycle:"h23",...o}).format(d)+" ET";
 const axMonth=lab=>+lab.slice(5)===1?lab.slice(2,4)+"/1":tr("monthN",+lab.slice(5));
 function applyLang(){
   document.documentElement.lang=LANG;
@@ -665,7 +666,7 @@ async function liveQuotes(d){
 }
 // When a newer version of the app is published, reload to pick it up (the version is the
 // service worker's cache name; bump both together).
-const APP_VER="tqqq-v15";
+const APP_VER="tqqq-v16";
 async function newerApp(){
   try{const t=await(await fetch("sw.js?ts="+Date.now(),{cache:"no-store"})).text();const m=t.match(/CACHE = "([^"]+)"/);
     // at most one reload per new version, in case the page itself is still served from a cache
