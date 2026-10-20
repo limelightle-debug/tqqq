@@ -42,6 +42,9 @@ h1{margin:0;font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size
 .pill i{width:7px;height:7px;border-radius:50%;background:var(--muted)}
 .pill.open i{background:var(--up)}
 .pill.warn{color:var(--down)}
+.tbtns{display:flex;align-items:center;gap:8px;flex:none}
+.lang{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink2);font:700 12px/1 inherit;letter-spacing:.04em;height:34px;padding:0 10px;border-radius:8px;cursor:pointer}
+.h2t{font-style:normal}
 .refresh{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);width:40px;height:40px;border-radius:50%;font-size:19px;line-height:1;cursor:pointer;flex:none}
 .refresh.spin{animation:spin .9s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -134,16 +137,16 @@ tr.hl td{background:var(--chip)}
         <img class="avatar" src="icons/avatar.png" alt="" width="42" height="42">
         <div style="min-width:0">
           <h1>TQQQ</h1>
-          <div class="status" id="status">読み込み中…</div>
+          <div class="status" id="status" data-i18n="loading">読み込み中…</div>
         </div>
       </div>
-      <button type="button" class="refresh" id="refresh" aria-label="最新データに更新">↻</button>
+      <span class="tbtns"><button type="button" class="lang" id="lang" aria-label="Language"></button><button type="button" class="refresh" id="refresh" aria-label="Refresh">↻</button></span>
     </div>
     <div class="controls">
       <div class="seg" id="tabs" role="group" aria-label="表示">
-        <button type="button" data-tab="chart">チャート</button>
-        <button type="button" data-tab="dist">分布</button>
-        <button type="button" data-tab="hold">リターン</button>
+        <button type="button" data-tab="chart" data-i18n="tabChart">チャート</button>
+        <button type="button" data-tab="dist" data-i18n="tabDist">分布</button>
+        <button type="button" data-tab="hold" data-i18n="tabHold">リターン</button>
       </div>
     </div>
   </div>
@@ -156,13 +159,13 @@ tr.hl td{background:var(--chip)}
     <section id="t-chart">
       <div class="ctlrow">
         <div class="seg" id="tf" role="group" aria-label="足">
-          <button type="button" data-tf="d">日足</button>
-          <button type="button" data-tf="w">週足</button>
-          <button type="button" data-tf="m">月足</button>
+          <button type="button" data-tf="d" data-i18n="tfD">日足</button>
+          <button type="button" data-tf="w" data-i18n="tfW">週足</button>
+          <button type="button" data-tf="m" data-i18n="tfM">月足</button>
         </div>
         <div class="seg" id="scale" role="group" aria-label="目盛り">
-          <button type="button" data-sc="lin">通常</button>
-          <button type="button" data-sc="log">対数</button>
+          <button type="button" data-sc="lin" data-i18n="scLin">通常</button>
+          <button type="button" data-sc="log" data-i18n="scLog">対数</button>
         </div>
       </div>
       <div class="ctlrow"><div class="seg sm" id="range" role="group" aria-label="期間"></div></div>
@@ -172,7 +175,7 @@ tr.hl td{background:var(--chip)}
       </div>
       <div class="facts" id="cfit"></div>
       <div class="panel">
-        <h2>騰落率の比較 <span>終値・期間の始まりを0%</span></h2>
+        <h2><i class="h2t" data-i18n="cmpTitle">騰落率の比較</i> <span data-i18n="cmpSub">終値・期間の始まりを0%</span></h2>
         <div class="legend" id="pleg"></div>
         <div class="readout" id="pread"></div>
         <div class="chart" id="pchart"></div>
@@ -183,18 +186,18 @@ tr.hl td{background:var(--chip)}
     <section id="t-dist" hidden>
       <div class="facts" id="dstats"></div>
       <div class="panel">
-        <h2>月次騰落率の分布</h2>
+        <h2 data-i18n="distTitle">月次騰落率の分布</h2>
         <div class="chart" id="dchart"></div>
         <div class="dlist" id="dread"></div>
       </div>
       <div class="panel">
-        <h2>幾何平均から計算したリターン倍率 <span id="msub"></span></h2>
+        <h2><i class="h2t" data-i18n="multTitle">幾何平均から計算したリターン倍率</i> <span id="msub"></span></h2>
         <div class="tscroll"><table id="mtable"></table></div>
       </div>
       <div class="panel">
-        <h2>ケリー基準 <span id="ksub"></span></h2>
+        <h2><i class="h2t" data-i18n="kellyTitle">ケリー基準</i> <span id="ksub"></span></h2>
         <div class="facts" id="kfacts" style="margin-top:0"></div>
-        <h2 style="margin-top:14px">実効露出と成長率</h2>
+        <h2 style="margin-top:14px" data-i18n="expoTitle">実効露出と成長率</h2>
         <div class="tscroll"><table id="ktable"></table></div>
         <div class="readout" id="kread" style="margin-top:10px"></div>
         <div class="chart" id="kchart"></div>
@@ -205,43 +208,77 @@ tr.hl td{background:var(--chip)}
     <section id="t-hold" hidden>
       <div class="ctlrow">
         <div class="seg" id="hmode" role="group" aria-label="計算方法">
-          <button type="button" data-hm="lh">年安値 → 年高値</button>
-          <button type="button" data-hm="ee">年末 → 年末</button>
+          <button type="button" data-hm="lh" data-i18n="hmLH">年安値 → 年高値</button>
+          <button type="button" data-hm="ee" data-i18n="hmEE">年末 → 年末</button>
         </div>
       </div>
       <div class="panel">
-        <h2>平均倍率 <span id="hsub1"></span></h2>
+        <h2><i class="h2t" data-i18n="avgMult">平均倍率</i> <span id="hsub1"></span></h2>
         <div class="legend" id="hleg1"></div>
         <div class="readout" id="hread1"></div>
         <div class="chart" id="hchart1"></div>
       </div>
       <div class="panel">
-        <h2>年率（CAGR） <span>倍率から計算</span></h2>
+        <h2><i class="h2t" data-i18n="cagrTitle">年率（CAGR）</i> <span data-i18n="fromMult">倍率から計算</span></h2>
         <div class="legend" id="hleg2"></div>
         <div class="readout" id="hread2"></div>
         <div class="chart" id="hchart2"></div>
       </div>
       <div class="panel">
-        <h2>データ：平均倍率 <span id="hsub3"></span></h2>
+        <h2><i class="h2t" data-i18n="dataAvgMult">データ：平均倍率</i> <span id="hsub3"></span></h2>
         <div class="tscroll"><table id="htable1"></table></div>
       </div>
       <div class="panel">
-        <h2>データ：年率（CAGR）</h2>
+        <h2 data-i18n="dataCagr">データ：年率（CAGR）</h2>
         <div class="tscroll"><table id="htable2"></table></div>
       </div>
     </section>
 
-    <div class="foot lab"><span class="labname"><img src="icons/lab.jpg" alt="" width="36" height="36">恐怖指数研究所</span><a href="https://limelightle-debug.github.io/ndx-heatmap/">Nasdaq 100 を開く</a></div>
+    <div class="foot lab"><span class="labname"><img src="icons/lab.jpg" alt="" width="36" height="36"><span data-i18n="lab">恐怖指数研究所</span></span><a href="https://limelightle-debug.github.io/ndx-heatmap/" data-i18n="openNdx">Nasdaq 100 を開く</a></div>
   </div>
-  <div class="empty" id="empty">データを読み込んでいます…</div>
+  <div class="empty" id="empty" data-i18n="loadingData">データを読み込んでいます…</div>
 </div>
 
 <script src="d3.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
+/* ---------- language (日本語 / English) ---------- */
+let LANG=(()=>{try{const v=localStorage.getItem("lang");if(v==="ja"||v==="en")return v}catch(e){}return /^ja/i.test(navigator.language||"")?"ja":"en"})();
+const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const I18N={
+ ja:{loading:"読み込み中…",loadingData:"データを読み込んでいます…",tabChart:"チャート",tabDist:"分布",tabHold:"リターン",tfD:"日足",tfW:"週足",tfM:"月足",scLin:"通常",scLog:"対数",hmLH:"年安値 → 年高値",hmEE:"年末 → 年末",
+  cmpTitle:"騰落率の比較",cmpSub:"終値・期間の始まりを0%",distTitle:"月次騰落率の分布",multTitle:"幾何平均から計算したリターン倍率",kellyTitle:"ケリー基準",expoTitle:"実効露出と成長率",avgMult:"平均倍率",cagrTitle:"年率（CAGR）",fromMult:"倍率から計算",dataAvgMult:"データ：平均倍率",dataCagr:"データ：年率（CAGR）",
+  lab:"恐怖指数研究所",openNdx:"Nasdaq 100 を開く",switchTo:"EN",
+  r3M:"3ヶ月",r6M:"6ヶ月",r1Y:"1年",r2Y:"2年",r5Y:"5年",r10Y:"10年",rALL:"全期間",x:"倍",updated:v=>`更新 ${v}`,open:"米国市場 取引中",closed:"米国市場 時間外",stale:"更新が遅れています",
+  latest:"最新値",closeOf:d=>`${d}の終値`,high:"高値",low:"安値",prevClose:"前日終値",ath:"上場来高値",yearN:k=>`${k}年`,monthN:m=>`${m}月`,vsPrevYE:"前年末比",vsPrevME:"前月末比",provHigh:n=>`${n}高値（暫定）`,provLow:n=>`${n}安値（暫定）`,
+  noPeer:"この期間には QQQ・QLD のデータがありません",cmpAria:"TQQQ・QLD・QQQの騰落率の比較",start:"起点",candleAria:"TQQQのローソク足チャート",cl:"終",op:"始",hi:"高",lo:"安",fitLine:"近似線",fitCurve:"近似曲線",fitX:"x＝期間の始まりからの年数",fitAnn:"近似の年率",r2:"R²（対数で計算）",r2s:"1に近いほど良い",fitDev:"近似線との差",
+  mean:"平均（算術）",monthly:"月次",median:"中央値",geo:"幾何平均",annual:"年率",months:"月数",geoLine:"幾何平均",distAria:"TQQQの月次騰落率の分布",nMonths:n=>`${n}ヶ月`,thisMonth:k=>`今月（${k}、途中）`,thisBar:"▼の棒",tapBar:"棒をタップすると、その範囲に入った月が出ます",
+  msub:(m,a)=>`月次 ${m}（年率 ${a}）の複利`,holdPeriod:"保有期間",multiple:"倍率",formula:"計算式",winRate:"勝率",avgWin:"平均勝ち幅",avgLoss:"平均負け幅",kellyOpt:"ケリー最適",halfKelly:"ハーフケリー",vsNdx:"対Nasdaq100",worstMonthT:"TQQQ最悪の月",
+  tqqqRatio:"TQQQ比率",annGrowth:"年率成長",worstMonth:"最悪の月",half:"ハーフ",kelly:"ケリー",x3:"3倍",expoAria:"実効露出と年率成長",tqqqShort:"TQQQ",
+  fitName:"TQQQ近似",yearsN:n=>`${n}年`,holdYears:"保有年数",fitCol:"近似",yearCol:"年",lhSub:"ある年の安値で買い、N年後の年の高値で売る",eeSub:"ある年の年末に買い、N年後の年末に売る",
+  noData:"まだデータがありません。<br>GitHub の Actions で「Update TQQQ data」を一度実行すると表示されます。",loadFail:"データを読み込めませんでした。通信状況を確認して、右上の↻で再読み込みしてください。",noDataShort:"データなし"},
+ en:{loading:"Loading…",loadingData:"Loading data…",tabChart:"Chart",tabDist:"Distribution",tabHold:"Returns",tfD:"Daily",tfW:"Weekly",tfM:"Monthly",scLin:"Linear",scLog:"Log",hmLH:"Year low → year high",hmEE:"Year end → year end",
+  cmpTitle:"Performance comparison",cmpSub:"Closes, 0% at the start of the period",distTitle:"Distribution of monthly returns",multTitle:"Return multiples from the geometric mean",kellyTitle:"Kelly criterion",expoTitle:"Effective exposure and growth",avgMult:"Average multiple",cagrTitle:"Annual rate (CAGR)",fromMult:"From the multiples",dataAvgMult:"Data: average multiple",dataCagr:"Data: annual rate (CAGR)",
+  lab:"Fear Index Research Institute",openNdx:"Open Nasdaq 100",switchTo:"日本語",
+  r3M:"3M",r6M:"6M",r1Y:"1Y",r2Y:"2Y",r5Y:"5Y",r10Y:"10Y",rALL:"All",x:"x",updated:v=>`Updated ${v}`,open:"US market open",closed:"US market closed",stale:"Update delayed",
+  latest:"Latest",closeOf:d=>`${d} close`,high:"High",low:"Low",prevClose:"Prev. close",ath:"All-time high",yearN:k=>`${k}`,monthN:m=>MON[m-1],vsPrevYE:"vs prev. year-end",vsPrevME:"vs prev. month-end",provHigh:n=>`${n} high (so far)`,provLow:n=>`${n} low (so far)`,
+  noPeer:"No QQQ or QLD data for this period",cmpAria:"Performance of TQQQ, QLD and QQQ",start:"Start",candleAria:"TQQQ candlestick chart",cl:"C",op:"O",hi:"H",lo:"L",fitLine:"Fit",fitCurve:"Fitted curve",fitX:"x = years from the start of the period",fitAnn:"Fitted annual rate",r2:"R² (on logs)",r2s:"Closer to 1 is better",fitDev:"Gap to the fit",
+  mean:"Mean (arithmetic)",monthly:"Monthly",median:"Median",geo:"Geometric mean",annual:"Annual",months:"Months",geoLine:"Geo. mean",distAria:"Distribution of TQQQ's monthly returns",nMonths:n=>`${n} mo`,thisMonth:k=>`This month (${k}, so far)`,thisBar:"▼ bar",tapBar:"Tap a bar to list the months in that range",
+  msub:(m,a)=>`Compounding ${m} a month (${a} a year)`,holdPeriod:"Holding",multiple:"Multiple",formula:"Formula",winRate:"Win rate",avgWin:"Avg. win",avgLoss:"Avg. loss",kellyOpt:"Kelly optimum",halfKelly:"Half Kelly",vsNdx:"vs Nasdaq 100",worstMonthT:"TQQQ worst month",
+  tqqqRatio:"TQQQ share",annGrowth:"Annual growth",worstMonth:"Worst month",half:"Half",kelly:"Kelly",x3:"3x",expoAria:"Effective exposure and annual growth",tqqqShort:"TQQQ",
+  fitName:"TQQQ fit",yearsN:n=>`${n}y`,holdYears:"Years held",fitCol:"Fit",yearCol:"Yrs",lhSub:"Buy at a year's low, sell at the high N years later",eeSub:"Buy at a year end, sell at the year end N years later",
+  noData:"No data yet.<br>Run “Update TQQQ data” once in GitHub Actions.",loadFail:"Could not load the data. Check the connection and reload with ↻ at the top right.",noDataShort:"No data"}};
+const tr=(k,...a)=>{const v=I18N[LANG][k]??I18N.ja[k];return typeof v==="function"?v(...a):v};
+const fmtTime=(d,o)=>new Intl.DateTimeFormat(LANG==="ja"?"ja-JP":"en-US",LANG==="ja"?{timeZone:"Asia/Tokyo",...o}:{hourCycle:"h23",...o}).format(d);
+const axMonth=lab=>+lab.slice(5)===1?lab.slice(2,4)+"/1":tr("monthN",+lab.slice(5));
+function applyLang(){
+  document.documentElement.lang=LANG;
+  document.querySelectorAll("[data-i18n]").forEach(e=>{e.innerHTML=tr(e.dataset.i18n)});
+  const b=document.getElementById("lang");if(b)b.textContent=tr("switchTo");
+}
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const store={get(k,d){try{const v=localStorage.getItem("tqqq."+k);return v==null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem("tqqq."+k,v)}catch(e){}}};
-const RANGES={d:[["3M","3ヶ月",63],["6M","6ヶ月",126],["1Y","1年",252],["2Y","2年",504]],w:[["1Y","1年",52],["2Y","2年",104],["5Y","5年",260],["ALL","全期間",0]],m:[["5Y","5年",60],["10Y","10年",120],["ALL","全期間",0]]};
+const RANGES={d:[["3M","r3M",63],["6M","r6M",126],["1Y","r1Y",252],["2Y","r2Y",504]],w:[["1Y","r1Y",52],["2Y","r2Y",104],["5Y","r5Y",260],["ALL","rALL",0]],m:[["5Y","r5Y",60],["10Y","r10Y",120],["ALL","rALL",0]]};
 const DEF_RANGE={d:"6M",w:"2Y",m:"ALL"};
 const state={tab:store.get("tab","chart"),tf:store.get("tf","d"),sc:store.get("sc","lin"),range:{d:store.get("r_d",DEF_RANGE.d),w:store.get("r_w",DEF_RANGE.w),m:store.get("r_m",DEF_RANGE.m)},hm:store.get("hm","lh"),ci:null,di:null,hi:null,ki:null,pi:null};
 if(!["chart","dist","hold"].includes(state.tab))state.tab="chart";
@@ -278,7 +315,7 @@ function expFit(xs,ys){
 /* ---------- formatting ---------- */
 const pct=(v,d=1)=>v==null||!isFinite(v)?"—":(v>0?"+":v<0?"−":"±")+Math.abs(v*100).toFixed(d)+"%";
 const pctAbs=(v,d=1)=>v==null||!isFinite(v)?"—":(v<0?"−":"")+Math.abs(v*100).toFixed(d)+"%";
-const mult=v=>v==null||!isFinite(v)?"—":(v>=100?v.toFixed(0):v>=10?v.toFixed(1):v.toFixed(2))+"倍";
+const mult=v=>v==null||!isFinite(v)?"—":(v>=100?v.toFixed(0):v>=10?v.toFixed(1):v.toFixed(2))+tr("x");
 const px=v=>v==null?"—":v>=100?v.toFixed(1):v>=1?v.toFixed(2):v.toFixed(3);
 const cls=v=>v>0?"pos":v<0?"neg":"";
 function readColors(){const cs=getComputedStyle(document.documentElement);const g=n=>cs.getPropertyValue(n).trim();C={up:g("--up"),down:g("--down"),ink:g("--ink"),muted:g("--muted"),tqqq:g("--s-tqqq"),qld:g("--s-qld"),qqq:g("--s-qqq"),hist:g("--s-hist"),histNeg:g("--s-hist-neg"),chip:g("--chip")}}
@@ -289,9 +326,9 @@ function marketOpen(date=new Date()){const p=nyParts(date);return !["Sat","Sun"]
 function renderStatus(){
   if(!D)return;
   const d=new Date(D.updatedAt);
-  const t=new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",month:"numeric",day:"numeric",weekday:"short",hour:"2-digit",minute:"2-digit"}).format(d);
+  const tm=fmtTime(d,{month:"numeric",day:"numeric",weekday:"short",hour:"2-digit",minute:"2-digit"});
   const open=marketOpen();const age=(Date.now()-d.getTime())/6e4;const stale=open?age>45:age>4*1440;
-  $("status").innerHTML=`<span>更新 ${esc(t)}</span><span class="pill ${open?"open":""}"><i></i>${open?"米国市場 取引中":"米国市場 時間外"}</span>${stale?`<span class="pill warn">更新が遅れています</span>`:""}`;
+  $("status").innerHTML=`<span>${esc(tr("updated",tm))}</span><span class="pill ${open?"open":""}"><i></i>${open?tr("open"):tr("closed")}</span>${stale?`<span class="pill warn">${tr("stale")}</span>`:""}`;
 }
 function renderPrice(){
   const last=DAYS[DAYS.length-1];const qt=(D.quotes&&D.quotes.TQQQ)||{};
@@ -299,13 +336,13 @@ function renderPrice(){
   // live while the quote carries a time of day in the regular session (today's bar is built from it)
   const md=x=>`${+x.slice(5,7)}/${+x.slice(8,10)}`;
   const live=/\d:\d/.test(qt.time||"")&&!/closed/i.test(qt.time||"");
-  const when=live?"最新値":`${md(last.d)}の終値`;
+  const when=live?tr("latest"):tr("closeOf",md(last.d));
   let ath=0;DAYS.forEach(x=>{if(x.h>ath)ath=x.h});
   // day's high and low: from the live quote while the market is open, otherwise the last daily bar
   // (the last bar is today's while live, so its high and low are a fallback for the same day)
   const dh=live&&qt.high!=null?qt.high:last.h, dl=live&&qt.low!=null?qt.low:last.l, hl=dh!=null&&dl!=null;
-  $("price").innerHTML=`<div class="p"><small>$</small>${px(p)}</div><div class="pside"><div class="chg ${cls(ch)}">${ch>=0?"+":"−"}${Math.abs(p-prev.c).toFixed(2)}（${pct(ch,2)}）</div>${hl?`<div class="dhl"><span>高値 <b>${dh.toFixed(2)}</b></span><span>安値 <b>${dl.toFixed(2)}</b></span></div>`:""}</div>
-   <div class="meta">${esc(when)} · 前日終値 $${px(prev.c)} · 上場来高値 $${px(ath)}（${pct(p/ath-1)}）</div>`;
+  $("price").innerHTML=`<div class="p"><small>$</small>${px(p)}</div><div class="pside"><div class="chg ${cls(ch)}">${ch>=0?"+":"−"}${Math.abs(p-prev.c).toFixed(2)}（${pct(ch,2)}）</div>${hl?`<div class="dhl"><span>${tr("high")} <b>${dh.toFixed(2)}</b></span><span>${tr("low")} <b>${dl.toFixed(2)}</b></span></div>`:""}</div>
+   <div class="meta">${esc(when)} · ${tr("prevClose")} $${px(prev.c)} · ${tr("ath")} $${px(ath)}（${pct(p/ath-1)}）</div>`;
   renderPeers();
 }
 // cards under the price: QQQ and QLD, or on the distribution tab this month's provisional high and low
@@ -316,9 +353,9 @@ function renderPeers(){
     const cur=DAYS.filter(x=>x.d.slice(0,len)===k), before=DAYS.filter(x=>x.d.slice(0,len)<k);
     const base=before.length?before[before.length-1].c:null;
     const hi=Math.max(...cur.map(x=>x.h)), lo=Math.min(...cur.map(x=>x.l));
-    const name=yearly?`${k}年`:`${+k.slice(5)}月`, ref=yearly?"前年末比":"前月末比";
+    const name=yearly?tr("yearN",k):tr("monthN",+k.slice(5)), ref=yearly?tr("vsPrevYE"):tr("vsPrevME");
     const card=(lab,v)=>{const r=base?v/base-1:null;return`<div class="peer"><span class="t">${lab}</span><span class="v">$${v.toFixed(2)}</span><span class="c ${cls(r)}">${base?`${ref} ${pct(r,2)}`:""}</span></div>`};
-    $("peers").innerHTML=card(`${name}高値（暫定）`,hi)+card(`${name}安値（暫定）`,lo);
+    $("peers").innerHTML=card(tr("provHigh",name),hi)+card(tr("provLow",name),lo);
     return;
   }
   const q=D.quotes||{};
@@ -329,7 +366,7 @@ function renderPeers(){
 
 /* ---------- tab 1: candles ---------- */
 function renderRangeButtons(){
-  $("range").innerHTML=RANGES[state.tf].map(([k,l])=>`<button type="button" data-rg="${k}" aria-pressed="${k===state.range[state.tf]}">${l}</button>`).join("");
+  $("range").innerHTML=RANGES[state.tf].map(([k,l])=>`<button type="button" data-rg="${k}" aria-pressed="${k===state.range[state.tf]}">${tr(l)}</button>`).join("");
 }
 function shownBars(){
   const all=bars(state.tf);const r=RANGES[state.tf].find(x=>x[0]===state.range[state.tf])||RANGES[state.tf][0];
@@ -341,7 +378,7 @@ function renderCompare(B){
   const i0=B.findIndex(b=>b.qc!=null&&b.lc!=null);
   const S=[["TQQQ","tqqq","c"],["QLD","qld","lc"],["QQQ","qqq","qc"]];
   $("pleg").innerHTML=S.map(([n,k])=>`<span><i style="background:${C[k]}"></i>${n}</span>`).join("");
-  if(i0<0){el.innerHTML=`<div class="empty" style="padding:30px 10px">この期間には QQQ・QLD のデータがありません</div>`;$("pread").innerHTML="";el._geo=null;return}
+  if(i0<0){el.innerHTML=`<div class="empty" style="padding:30px 10px">${tr("noPeer")}</div>`;$("pread").innerHTML="";el._geo=null;return}
   const base=Object.fromEntries(S.map(([n,,f])=>[n,B[i0][f]]));
   const R=S.map(([n,k,f])=>({n,k,v:B.map((b,i)=>i<i0||b[f]==null?null:b[f]/base[n])}));
   const W=Math.max(300,el.clientWidth), narrow=W<560, H=narrow?Math.round(W*.8):360;
@@ -354,15 +391,15 @@ function renderCompare(B){
   let g="";ticks.forEach(v=>{g+=`<line class="grid" x1="${ML}" x2="${ML+PW}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${ML+PW+6}" y="${y(v)+4}">${fmtp(v)}</text>`});
   if(y.domain()[0]<1&&y.domain()[1]>1)g+=`<line x1="${ML}" x2="${ML+PW}" y1="${y(1)}" y2="${y(1)}" stroke="${C.muted}"/>`;
   let lastLab="";const span=(B[n-1].t-B[0].t)/864e5;
-  B.forEach((b,i)=>{const lab=span>800?b.d.slice(0,4):b.d.slice(0,7);if(lab!==lastLab){const show=span>800?(+lab%(span>3000?2:1)===0):(+b.d.slice(5,7)%(span>300?3:1)===0);if(show&&i>0)g+=`<text class="ax" x="${x(i)}" y="${H-6}" text-anchor="middle">${span>800?"’"+lab.slice(2):(+lab.slice(5)===1?lab.slice(2,4)+"/1":+lab.slice(5)+"月")}</text>`}lastLab=lab});
+  B.forEach((b,i)=>{const lab=span>800?b.d.slice(0,4):b.d.slice(0,7);if(lab!==lastLab){const show=span>800?(+lab%(span>3000?2:1)===0):(+b.d.slice(5,7)%(span>300?3:1)===0);if(show&&i>0)g+=`<text class="ax" x="${x(i)}" y="${H-6}" text-anchor="middle">${span>800?"’"+lab.slice(2):axMonth(lab)}</text>`}lastLab=lab});
   let p="";[...R].reverse().forEach(r=>{let d="";r.v.forEach((v,i)=>{if(v==null)return;d+=(d?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)});p+=`<path d="${d}" fill="none" stroke="${C[r.k]}" stroke-width="${r.n==="TQQQ"?2:1.7}" stroke-linejoin="round"/>`});
   const sel=state.pi!=null&&state.pi<n?state.pi:null;let xh="";
   if(sel!=null){xh=`<line class="xh" x1="${x(sel)}" x2="${x(sel)}" y1="${MT}" y2="${MT+PH}"/>`;R.forEach(r=>{if(r.v[sel]!=null)xh+=`<circle cx="${x(sel)}" cy="${y(r.v[sel])}" r="3.5" fill="${C[r.k]}" stroke="var(--panel)" stroke-width="1.5"/>`})}
-  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="TQQQ・QLD・QQQの騰落率の比較">${g}${p}${xh}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${tr("cmpAria")}">${g}${p}${xh}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
   el._geo={ML,PW,n};
   const k=sel!=null&&sel>=i0?sel:n-1, b=B[k];
   const lbl=state.tf==="d"?b.d:state.tf==="w"?`${b.d}〜${b.last.slice(5)}`:b.d.slice(0,7);
-  $("pread").innerHTML=`<div class="rrow"><b>${lbl}</b><span>起点 ${state.tf==="m"?B[i0].d.slice(0,7):B[i0].d}</span></div><div class="rrow">${R.map(r=>`<span>${r.n} <b>${r.v[k]==null?"—":fmtp(r.v[k])}</b></span>`).join("")}</div>`;
+  $("pread").innerHTML=`<div class="rrow"><b>${lbl}</b><span>${tr("start")} ${state.tf==="m"?B[i0].d.slice(0,7):B[i0].d}</span></div><div class="rrow">${R.map(r=>`<span>${r.n} <b>${r.v[k]==null?"—":fmtp(r.v[k])}</b></span>`).join("")}</div>`;
 }
 function renderCandles(){
   const el=$("cchart");const B=shownBars();if(!B.length){el.innerHTML="";return}
@@ -382,7 +419,7 @@ function renderCandles(){
   ticks.forEach(v=>{g+=`<line class="grid" x1="${ML}" x2="${ML+PW}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${ML+PW+6}" y="${y(v)+4}">${tickFmt(v)}</text>`});
   // x ticks: years, or months for short daily views
   let lastLab="";const span=(B[n-1].t-t0)/864e5;
-  B.forEach((b,i)=>{const lab=span>800?b.d.slice(0,4):b.d.slice(0,7);if(lab!==lastLab){const show=span>800?(+lab%(span>3000?2:1)===0):(+b.d.slice(5,7)%(span>300?3:1)===0);if(show&&i>0){g+=`<line class="grid" x1="${x(i)}" x2="${x(i)}" y1="${MT}" y2="${MT+PH}" opacity=".5"/><text class="ax" x="${x(i)}" y="${H-6}" text-anchor="middle">${span>800?"’"+lab.slice(2):(+lab.slice(5)===1?lab.slice(2,4)+"/1":+lab.slice(5)+"月")}</text>`}}lastLab=lab});
+  B.forEach((b,i)=>{const lab=span>800?b.d.slice(0,4):b.d.slice(0,7);if(lab!==lastLab){const show=span>800?(+lab%(span>3000?2:1)===0):(+b.d.slice(5,7)%(span>300?3:1)===0);if(show&&i>0){g+=`<line class="grid" x1="${x(i)}" x2="${x(i)}" y1="${MT}" y2="${MT+PH}" opacity=".5"/><text class="ax" x="${x(i)}" y="${H-6}" text-anchor="middle">${span>800?"’"+lab.slice(2):axMonth(lab)}</text>`}}lastLab=lab});
   let c="";
   B.forEach((b,i)=>{const col=b.c>=b.o?C.up:C.down;const xc=x(i).toFixed(1);
     c+=`<line x1="${xc}" x2="${xc}" y1="${y(b.h).toFixed(1)}" y2="${y(b.l).toFixed(1)}" stroke="${col}" stroke-width="1"/>`;
@@ -390,17 +427,17 @@ function renderCandles(){
   let f="";if(fit){f=`<path class="fit" d="${B.map((b,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(fit.f(yrs(b))).toFixed(1)).join("")}"/>`}
   let xh="";const ci=state.ci!=null&&state.ci<n?state.ci:null;
   if(ci!=null)xh=`<line class="xh" x1="${x(ci)}" x2="${x(ci)}" y1="${MT}" y2="${MT+PH}"/>`;
-  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="TQQQのローソク足チャート">${g}${c}${f}${xh}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${tr("candleAria")}">${g}${c}${f}${xh}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
   el._geo={ML,PW,n};
   const b=B[ci!=null?ci:n-1];const lbl=state.tf==="d"?b.d:state.tf==="w"?`${b.d}〜${b.last.slice(5)}`:b.d.slice(0,7);
   // always two rows, so the chart below never shifts
-  $("cread").innerHTML=`<div class="rrow"><b>${lbl}</b><span>終 <b>${px(b.c)}</b></span>${fit?`<span>近似線 ${px(fit.f(yrs(b)))}</span>`:""}</div><div class="rrow"><span>始 ${px(b.o)}</span><span>高 ${px(b.h)}</span><span>安 ${px(b.l)}</span></div>`;
+  $("cread").innerHTML=`<div class="rrow"><b>${lbl}</b><span>${tr("cl")} <b>${px(b.c)}</b></span>${fit?`<span>${tr("fitLine")} ${px(fit.f(yrs(b)))}</span>`:""}</div><div class="rrow"><span>${tr("op")} ${px(b.o)}</span><span>${tr("hi")} ${px(b.h)}</span><span>${tr("lo")} ${px(b.l)}</span></div>`;
   // fit facts
   if(fit){const lastB=B[n-1];const dev=lastB.c/fit.f(yrs(lastB))-1;
-    $("cfit").innerHTML=`<div class="fact wide"><div class="l">近似曲線</div><div class="v eq">y = ${fit.a.toPrecision(4)}·e<sup>${fit.b.toFixed(4)}x</sup></div><div class="s">x＝期間の始まりからの年数</div></div>
-     <div class="fact"><div class="l">近似の年率</div><div class="v ${cls(fit.b)}">${pct(Math.exp(fit.b)-1)}</div><div class="s">e<sup>b</sup> − 1</div></div>
-     <div class="fact"><div class="l">R²（対数で計算）</div><div class="v">${fit.r2.toFixed(3)}</div><div class="s">1に近いほど良い</div></div>
-     <div class="fact"><div class="l">近似線との差</div><div class="v ${cls(dev)}">${pct(dev)}</div><div class="s">近似線 $${px(fit.f(yrs(lastB)))}</div></div>`}
+    $("cfit").innerHTML=`<div class="fact wide"><div class="l">${tr("fitCurve")}</div><div class="v eq">y = ${fit.a.toPrecision(4)}·e<sup>${fit.b.toFixed(4)}x</sup></div><div class="s">${tr("fitX")}</div></div>
+     <div class="fact"><div class="l">${tr("fitAnn")}</div><div class="v ${cls(fit.b)}">${pct(Math.exp(fit.b)-1)}</div><div class="s">e<sup>b</sup> − 1</div></div>
+     <div class="fact"><div class="l">${tr("r2")}</div><div class="v">${fit.r2.toFixed(3)}</div><div class="s">${tr("r2s")}</div></div>
+     <div class="fact"><div class="l">${tr("fitDev")}</div><div class="v ${cls(dev)}">${pct(dev)}</div><div class="s">${tr("fitLine")} $${px(fit.f(yrs(lastB)))}</div></div>`}
   else $("cfit").innerHTML="";
   renderCompare(B);
 }
@@ -427,10 +464,10 @@ function renderDist(){
   const {rets,cur}=monthly();if(!rets.length)return;
   const rs=rets.map(x=>x.r);const n=rs.length;
   const mean=d3.mean(rs), med=d3.median(rs), geo=Math.exp(d3.mean(rs,r=>Math.log(1+r)))-1, sd=d3.deviation(rs);
-  $("dstats").innerHTML=`<div class="fact"><div class="l">平均（算術）</div><div class="v ${cls(mean)}">${pct(mean,2)}</div><div class="s">月次</div></div>
-   <div class="fact"><div class="l">中央値</div><div class="v ${cls(med)}">${pct(med,2)}</div><div class="s">月次</div></div>
-   <div class="fact"><div class="l">幾何平均</div><div class="v ${cls(geo)}">${pct(geo,2)}</div><div class="s">年率 ${pct((1+geo)**12-1)}</div></div>
-   <div class="fact"><div class="l">月数</div><div class="v">${n}</div><div class="s">${rets[0].k.slice(2).replace("-","/")}〜${rets[n-1].k.slice(2).replace("-","/")}<br>σ ${pctAbs(sd)}</div></div></div>`;
+  $("dstats").innerHTML=`<div class="fact"><div class="l">${tr("mean")}</div><div class="v ${cls(mean)}">${pct(mean,2)}</div><div class="s">${tr("monthly")}</div></div>
+   <div class="fact"><div class="l">${tr("median")}</div><div class="v ${cls(med)}">${pct(med,2)}</div><div class="s">${tr("monthly")}</div></div>
+   <div class="fact"><div class="l">${tr("geo")}</div><div class="v ${cls(geo)}">${pct(geo,2)}</div><div class="s">${tr("annual")} ${pct((1+geo)**12-1)}</div></div>
+   <div class="fact"><div class="l">${tr("months")}</div><div class="v">${n}</div><div class="s">${rets[0].k.slice(2).replace("-","/")}〜${rets[n-1].k.slice(2).replace("-","/")}<br>σ ${pctAbs(sd)}</div></div></div>`;
   // bins of 2.5%
   const w=.025, b0=Math.floor(Math.min(d3.min(rs),cur?cur.r:0)/w), b1=Math.floor(Math.max(d3.max(rs),cur?cur.r:0)/w);
   const bins=[];for(let b=b0;b<=b1;b++)bins.push({lo:b*w,hi:(b+1)*w,c:0,ms:[]});
@@ -450,18 +487,18 @@ function renderDist(){
     if(b.c&&band>=11)bars+=`<text class="ax" x="${(xx+bw/2).toFixed(1)}" y="${(y(b.c)-3).toFixed(1)}" text-anchor="middle">${b.c}</text>`;
     if(isCur)bars+=`<path d="M${(xx+bw/2).toFixed(1)} ${(y(b.c)-(b.c&&band>=11?14:4)).toFixed(1)} l-5 -7 h10 z" fill="${C.ink}"/>`});
   const gx=ML+((geo-b0*w)/w)*band;
-  const gl=`<line x1="${gx.toFixed(1)}" x2="${gx.toFixed(1)}" y1="${MT}" y2="${MT+PH}" stroke="${C.ink}" stroke-width="1.5" stroke-dasharray="5 3"/><text class="ax" x="${(gx+5).toFixed(1)}" y="${MT+9}" style="fill:var(--ink);font-weight:700">幾何平均 ${pct(geo,2)}</text>`;
-  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="TQQQの月次騰落率の分布">${g}${bars}${gl}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
+  const gl=`<line x1="${gx.toFixed(1)}" x2="${gx.toFixed(1)}" y1="${MT}" y2="${MT+PH}" stroke="${C.ink}" stroke-width="1.5" stroke-dasharray="5 3"/><text class="ax" x="${(gx+5).toFixed(1)}" y="${MT+9}" style="fill:var(--ink);font-weight:700">${tr("geoLine")} ${pct(geo,2)}</text>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${tr("distAria")}">${g}${bars}${gl}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
   el._geo={ML,PW,n:bins.length,bins};
   const show=state.di!=null&&bins[state.di]?bins[state.di]:null;
   // below the chart, so the chart never moves; every month in the bar, oldest first, with its return
-  $("dread").innerHTML=show?`<div class="dhead"><b>${pct(show.lo)} 〜 ${pct(show.hi)}</b><span>${show.c}ヶ月</span></div>${show.ms.length?`<div class="dmonths">${show.ms.map(m=>`<span><i>${m.k.replace("-","/")}</i>${pct(m.r)}</span>`).join("")}</div>`:""}`
-    :cur?`<div class="dhead"><b>今月（${cur.k.replace("-","/")}、途中）</b><span>${pct(cur.r)}　▼の棒</span></div>`:`<div class="dhead"><span>棒をタップすると、その範囲に入った月が出ます</span></div>`;
+  $("dread").innerHTML=show?`<div class="dhead"><b>${pct(show.lo)} 〜 ${pct(show.hi)}</b><span>${tr("nMonths",show.c)}</span></div>${show.ms.length?`<div class="dmonths">${show.ms.map(m=>`<span><i>${m.k.replace("-","/")}</i>${pct(m.r)}</span>`).join("")}</div>`:""}`
+    :cur?`<div class="dhead"><b>${tr("thisMonth",cur.k.replace("-","/"))}</b><span>${pct(cur.r)}　${tr("thisBar")}</span></div>`:`<div class="dhead"><span>${tr("tapBar")}</span></div>`;
   renderKelly(rs);
   // multiples
   const ys=[1,5,10,15,20];
-  $("msub").textContent=`月次 ${pct(geo,2)}（年率 ${pct((1+geo)**12-1)}）の複利`;
-  $("mtable").innerHTML=`<thead><tr><th>保有期間</th><th>倍率</th><th>計算式</th></tr></thead><tbody>${ys.map(k=>`<tr><td class="k">${k}年</td><td>${mult((1+geo)**(12*k))}</td><td class="k">(1${geo<0?"−":"+"}${Math.abs(geo*100).toFixed(2)}%)<sup>${12*k}</sup></td></tr>`).join("")}</tbody>`;
+  $("msub").textContent=tr("msub",pct(geo,2),pct((1+geo)**12-1));
+  $("mtable").innerHTML=`<thead><tr><th>${tr("holdPeriod")}</th><th>${tr("multiple")}</th><th>${tr("formula")}</th></tr></thead><tbody>${ys.map(k=>`<tr><td class="k">${tr("yearsN",k)}</td><td>${mult((1+geo)**(12*k))}</td><td class="k">(1${geo<0?"−":"+"}${Math.abs(geo*100).toFixed(2)}%)<sup>${12*k}</sup></td></tr>`).join("")}</tbody>`;
 }
 
 /* ---------- Kelly ---------- */
@@ -474,16 +511,16 @@ function renderKelly(rs){
   // allocation from 0% upward in 0.01% steps; the optimum is where expected log growth peaks
   let best=0,bg=-Infinity;
   for(let k=0;k<=100000;k++){const f=k/10000,g=kGrowth(rs,f);if(!isFinite(g))break;if(g>bg){bg=g;best=f}}
-  const ann=f=>Math.exp(12*kGrowth(rs,f))-1, half=best/2, x=v=>(v*LEV).toFixed(2)+"倍";
-  $("ksub").textContent=`${rs.length}ヶ月`;
-  $("kfacts").innerHTML=`<div class="fact"><div class="l">勝率</div><div class="v">${(p*100).toFixed(2)}%</div><div class="s">${wins.length} / ${n}ヶ月</div></div>
-   <div class="fact"><div class="l">平均勝ち幅</div><div class="v pos">${(aw*100).toFixed(2)}%</div></div>
-   <div class="fact"><div class="l">平均負け幅</div><div class="v neg">${(al*100).toFixed(2)}%</div></div>
-   <div class="fact"><div class="l">ケリー最適</div><div class="v">${(best*100).toFixed(1)}%</div><div class="s">対Nasdaq100 ${x(best)}</div></div>
-   <div class="fact"><div class="l">ハーフケリー</div><div class="v">${(half*100).toFixed(1)}%</div><div class="s">対Nasdaq100 ${x(half)}</div></div>
-   <div class="fact"><div class="l">TQQQ最悪の月</div><div class="v neg">${(worst*100).toFixed(1)}%</div></div>`;
-  const rows=[[.5,""],[2/3,""],[half,"ハーフケリー"],[1,""],[best,"ケリー最適"]].sort((a,b)=>a[0]-b[0]);
-  $("ktable").innerHTML=`<thead><tr><th>対Nasdaq100</th><th>TQQQ比率</th><th>年率成長</th><th>最悪の月</th></tr></thead><tbody>${rows.map(([f,l])=>`<tr${l?' class="hl"':""}><td>${x(f)}${l?`<small>${l}</small>`:""}</td><td>${(f*100).toFixed(1)}%</td><td>${pct(ann(f))}</td><td>${pct(f*worst)}</td></tr>`).join("")}</tbody>`;
+  const ann=f=>Math.exp(12*kGrowth(rs,f))-1, half=best/2, x=v=>(v*LEV).toFixed(2)+tr("x");
+  $("ksub").textContent=tr("nMonths",rs.length);
+  $("kfacts").innerHTML=`<div class="fact"><div class="l">${tr("winRate")}</div><div class="v">${(p*100).toFixed(2)}%</div><div class="s">${wins.length} / ${tr("nMonths",n)}</div></div>
+   <div class="fact"><div class="l">${tr("avgWin")}</div><div class="v pos">${(aw*100).toFixed(2)}%</div></div>
+   <div class="fact"><div class="l">${tr("avgLoss")}</div><div class="v neg">${(al*100).toFixed(2)}%</div></div>
+   <div class="fact"><div class="l">${tr("kellyOpt")}</div><div class="v">${(best*100).toFixed(1)}%</div><div class="s">${tr("vsNdx")} ${x(best)}</div></div>
+   <div class="fact"><div class="l">${tr("halfKelly")}</div><div class="v">${(half*100).toFixed(1)}%</div><div class="s">${tr("vsNdx")} ${x(half)}</div></div>
+   <div class="fact"><div class="l">${tr("worstMonthT")}</div><div class="v neg">${(worst*100).toFixed(1)}%</div></div>`;
+  const rows=[[.5,""],[2/3,""],[half,tr("halfKelly")],[1,""],[best,tr("kellyOpt")]].sort((a,b)=>a[0]-b[0]);
+  $("ktable").innerHTML=`<thead><tr><th>${tr("vsNdx")}</th><th>${tr("tqqqRatio")}</th><th>${tr("annGrowth")}</th><th>${tr("worstMonth")}</th></tr></thead><tbody>${rows.map(([f,l])=>`<tr${l?' class="hl"':""}><td>${x(f)}${l?`<small>${l}</small>`:""}</td><td>${(f*100).toFixed(1)}%</td><td>${pct(ann(f))}</td><td>${pct(f*worst)}</td></tr>`).join("")}</tbody>`;
   // curve: growth against Nasdaq-100 exposure
   const el=$("kchart");const W=Math.max(300,el.clientWidth), H=Math.round(Math.min(300,W*.68));
   const ML=44,MR=10,MT=10,MB=26, PW=W-ML-MR, PH=H-MT-MB;
@@ -492,19 +529,19 @@ function renderKelly(rs){
   const X=d3.scaleLinear().domain([0,fmax*LEV]).range([ML,ML+PW]);
   const Y=d3.scaleLinear().domain([Math.min(0,d3.min(pts,q=>q[1])),d3.max(pts,q=>q[1])]).nice().range([MT+PH,MT]);
   let g="";Y.ticks(5).forEach(v=>{g+=`<line class="grid" x1="${ML}" x2="${ML+PW}" y1="${Y(v)}" y2="${Y(v)}"/><text class="ax" x="${ML-6}" y="${Y(v)+4}" text-anchor="end">${Math.round(v*100)}%</text>`});
-  X.ticks(6).forEach(v=>{g+=`<text class="ax" x="${X(v)}" y="${H-8}" text-anchor="middle">${v}倍</text>`});
+  X.ticks(6).forEach(v=>{g+=`<text class="ax" x="${X(v)}" y="${H-8}" text-anchor="middle">${v}${tr("x")}</text>`});
   const line=`<path d="${pts.map((q,i)=>(i?"L":"M")+X(q[0]*LEV).toFixed(1)+" "+Y(q[1]).toFixed(1)).join("")}" fill="none" stroke="${C.tqqq}" stroke-width="2.2"/>`;
   // reference marks: thin solid pink lines (selection uses the common white dashes); labels sit on the side away from the neighbouring mark
   const mark=(f,lab,ty,left)=>{const xx=X(f*LEV);return`<line x1="${xx}" x2="${xx}" y1="${MT}" y2="${MT+PH}" stroke="${C.tqqq}" stroke-width="1.5" opacity=".45"/><circle cx="${xx}" cy="${Y(ann(f))}" r="4" fill="${C.tqqq}" stroke="var(--panel)" stroke-width="1.5"/><text class="ax" x="${left?xx-5:xx+5}" y="${ty}" text-anchor="${left?"end":"start"}" style="fill:var(--ink2);font-weight:700">${lab}</text>`};
   const show3=Math.abs(best-1)>.05&&Math.abs(half-1)>.05;
-  let mk=mark(half,"ハーフ",MT+10,half<1)+mark(best,"ケリー",MT+10,best<1&&half>=1);if(show3)mk+=mark(1,"3倍",MT+PH-6,false);
+  let mk=mark(half,tr("half"),MT+10,half<1)+mark(best,tr("kelly"),MT+10,best<1&&half>=1);if(show3)mk+=mark(1,tr("x3"),MT+PH-6,false);
   // the selected position: the same white dashes as every other chart
   const sel=state.ki;let xh="";if(sel!=null&&pts[sel]){const sx=X(pts[sel][0]*LEV);xh=`<line class="xh" x1="${sx}" x2="${sx}" y1="${MT}" y2="${MT+PH}"/><circle cx="${sx}" cy="${Y(pts[sel][1])}" r="4.5" fill="${C.ink}" stroke="var(--panel)" stroke-width="1.5"/>`}
-  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="実効露出と年率成長">${g}${line}${mk}${xh}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${tr("expoAria")}">${g}${line}${mk}${xh}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
   el._geo={ML,PW,n:pts.length,step:true};
   const q=sel!=null&&pts[sel]?pts[sel]:[best,ann(best)];
   const nw=t=>`<span style="white-space:nowrap">${t}</span>`;
-  $("kread").innerHTML=[nw(`対Nasdaq100 <b>${x(q[0])}</b>（TQQQ ${(q[0]*100).toFixed(1)}%）`),nw(`年率成長 <b>${pct(q[1])}</b>`),nw(`最悪の月 <b>${pct(q[0]*worst)}</b>`)].join("　");
+  $("kread").innerHTML=[nw(`${tr("vsNdx")} <b>${x(q[0])}</b>（TQQQ ${(q[0]*100).toFixed(1)}%）`),nw(`${tr("annGrowth")} <b>${pct(q[1])}</b>`),nw(`${tr("worstMonth")} <b>${pct(q[0]*worst)}</b>`)].join("　");
 }
 
 /* ---------- tab 3: holding period ---------- */
@@ -547,7 +584,7 @@ function lineChart(el,read,{xs,series,yfmt,ylab,sel}){
   el.innerHTML=`<svg viewBox="0 0 ${W} ${H+12}" role="img">${g}${p}${xh}<rect class="hit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
   el._geo={ML,PW,n:xs.length,step:true};
   const i=sel!=null?sel:xs.length-1;
-  read.innerHTML=`<b>${xs[i]}年</b>　`+series.map(s=>`${s.name} <b>${s.vals[i]==null?"—":yfmt(s.vals[i],true)}</b>`).join("　");
+  read.innerHTML=`<b>${tr("yearsN",xs[i])}</b>　`+series.map(s=>`${s.name} <b>${s.vals[i]==null?"—":yfmt(s.vals[i],true)}</b>`).join("　");
 }
 function declutter(svgEl){
   // nudge right-edge labels apart (at least 12px)
@@ -557,20 +594,20 @@ function declutter(svgEl){
 function renderHold(){
   const S=holdStats(state.hm);const xs=[...Array(10)].map((_,i)=>i+1);const sel=state.hi;
   const fitVals=S.fit?xs.map(n=>S.fit.f(n)):xs.map(()=>null);
-  const ser=SYMS.map(([s,k])=>({name:s,color:C[k],vals:S[s].res.map(r=>r.m)})).concat([{name:"TQQQ近似",color:C.ink,vals:fitVals,dash:true,fn:S.fit?S.fit.f:null}]);
-  lineChart($("hchart1"),$("hread1"),{xs,series:ser,yfmt:(v,full)=>full?mult(v):v+"倍",ylab:"保有年数",sel});
+  const ser=SYMS.map(([s,k])=>({name:s,color:C[k],vals:S[s].res.map(r=>r.m)})).concat([{name:tr("fitName"),color:C.ink,vals:fitVals,dash:true,fn:S.fit?S.fit.f:null}]);
+  lineChart($("hchart1"),$("hread1"),{xs,series:ser,yfmt:(v,full)=>full?mult(v):v+tr("x"),ylab:tr("holdYears"),sel});
   declutter($("hchart1").querySelector("svg"));
   const ser2=SYMS.map(([s,k])=>({name:s,color:C[k],vals:S[s].res.map(r=>r.cagr)}));
-  lineChart($("hchart2"),$("hread2"),{xs,series:ser2,yfmt:(v,full)=>full?pct(v):Math.round(v*100)+"%",ylab:"保有年数",sel});
+  lineChart($("hchart2"),$("hread2"),{xs,series:ser2,yfmt:(v,full)=>full?pct(v):Math.round(v*100)+"%",ylab:tr("holdYears"),sel});
   declutter($("hchart2").querySelector("svg"));
   const sw=k=>`<i style="background:${C[k]}"></i>`;
-  $("hleg1").innerHTML=SYMS.map(([s,k])=>`<span>${sw(k)}${s}</span>`).join("")+(S.fit?`<span><i class="dash"></i>TQQQ近似 <span class="eq">y = ${S.fit.a.toFixed(4)}e<sup>${S.fit.b.toFixed(4)}x</sup>　R² = ${S.fit.r2.toFixed(4)}</span></span>`:"");
+  $("hleg1").innerHTML=SYMS.map(([s,k])=>`<span>${sw(k)}${s}</span>`).join("")+(S.fit?`<span><i class="dash"></i>${tr("fitName")} <span class="eq">y = ${S.fit.a.toFixed(4)}e<sup>${S.fit.b.toFixed(4)}x</sup>　R² = ${S.fit.r2.toFixed(4)}</span></span>`:"");
   $("hleg2").innerHTML=SYMS.map(([s,k])=>`<span>${sw(k)}${s}</span>`).join("");
   const lh=state.hm==="lh";
-  $("hsub1").textContent=lh?"ある年の安値で買い、N年後の年の高値で売る":"ある年の年末に買い、N年後の年末に売る";
+  $("hsub1").textContent=lh?tr("lhSub"):tr("eeSub");
   $("hsub3").textContent="";
-  $("htable1").innerHTML=`<thead><tr><th>年</th>${SYMS.map(([s])=>`<th>${s}</th>`).join("")}<th>近似</th></tr></thead><tbody>${xs.map((n,i)=>`<tr${sel===i?' class="hl"':""}><td class="k">${n}年</td>${SYMS.map(([s])=>{const r=S[s].res[i];return`<td>${r.m==null?"—":r.m.toFixed(2)}</td>`}).join("")}<td>${fitVals[i]==null?"—":fitVals[i].toFixed(2)}</td></tr>`).join("")}</tbody>`;
-  $("htable2").innerHTML=`<thead><tr><th>年</th>${SYMS.map(([s])=>`<th>${s}</th>`).join("")}</tr></thead><tbody>${xs.map((n,i)=>`<tr${sel===i?' class="hl"':""}><td class="k">${n}年</td>${SYMS.map(([s])=>`<td>${pct(S[s].res[i].cagr)}</td>`).join("")}</tr>`).join("")}</tbody>`;
+  $("htable1").innerHTML=`<thead><tr><th>${tr("yearCol")}</th>${SYMS.map(([s])=>`<th>${s}</th>`).join("")}<th>${tr("fitCol")}</th></tr></thead><tbody>${xs.map((n,i)=>`<tr${sel===i?' class="hl"':""}><td class="k">${tr("yearsN",n)}</td>${SYMS.map(([s])=>{const r=S[s].res[i];return`<td>${r.m==null?"—":r.m.toFixed(2)}</td>`}).join("")}<td>${fitVals[i]==null?"—":fitVals[i].toFixed(2)}</td></tr>`).join("")}</tbody>`;
+  $("htable2").innerHTML=`<thead><tr><th>${tr("yearCol")}</th>${SYMS.map(([s])=>`<th>${s}</th>`).join("")}</tr></thead><tbody>${xs.map((n,i)=>`<tr${sel===i?' class="hl"':""}><td class="k">${tr("yearsN",n)}</td>${SYMS.map(([s])=>`<td>${pct(S[s].res[i].cagr)}</td>`).join("")}</tr>`).join("")}</tbody>`;
 }
 
 /* ---------- render ---------- */
@@ -598,7 +635,6 @@ let loading=false;
 // Live quotes from Finnhub (free key; it is visible in this page). They replace the latest
 // prices and today's bar from the published data, so the refresh button gets the newest values.
 const FINNHUB="dbb211pr01qrv06nsrngdbb211pr01qrv06nsro0";
-const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function etParts(t){
   const o={};new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric",hourCycle:"h23"})
     .formatToParts(new Date(t*1000)).forEach(x=>{o[x.type]=+x.value});return o;
@@ -628,7 +664,7 @@ async function liveQuotes(d){
 }
 // When a newer version of the app is published, reload to pick it up (the version is the
 // service worker's cache name; bump both together).
-const APP_VER="tqqq-v13";
+const APP_VER="tqqq-v14";
 async function newerApp(){
   try{const t=await(await fetch("sw.js?ts="+Date.now(),{cache:"no-store"})).text();const m=t.match(/CACHE = "([^"]+)"/);
     // at most one reload per new version, in case the page itself is still served from a cache
@@ -647,7 +683,7 @@ async function load(manual){
     try{await liveQuotes(d)}catch(e){}
     if(!D||d.updatedAt!==D.updatedAt||manual){setData(d);renderAll()}else renderStatus();
   }catch(e){
-    if(!D){$("empty").innerHTML=e.message==="nodata"?"まだデータがありません。<br>GitHub の Actions で「Update TQQQ data」を一度実行すると表示されます。":"データを読み込めませんでした。通信状況を確認して、右上の↻で再読み込みしてください。";$("status").textContent="データなし"}
+    if(!D){$("empty").innerHTML=e.message==="nodata"?tr("noData"):tr("loadFail");$("status").textContent=tr("noDataShort")}
   }finally{loading=false;$("refresh").classList.remove("spin")}
 }
 
@@ -703,7 +739,8 @@ let rt;new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(()=>{if(D)renderTa
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")load(false)});
 setInterval(()=>{if(document.visibilityState==="visible")load(false)},5*60*1000);
 setInterval(()=>{if(D)renderStatus()},60*1000);
-renderAll();load(false);
+$("lang").addEventListener("click",()=>{LANG=LANG==="ja"?"en":"ja";try{localStorage.setItem("lang",LANG)}catch(e){}applyLang();renderAll()});
+applyLang();renderAll();load(false);
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
 </script>
 </body>
