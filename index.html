@@ -64,14 +64,14 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .dhl{display:flex;gap:12px;font-size:12px;color:var(--muted)}
 .dhl b{font-family:var(--f-tick);font-stretch:82%;font-size:15px;color:var(--ink);font-weight:700;margin-left:3px}
 .price .meta{font-size:12px;color:var(--muted);width:100%}
-.peers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.peers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
 .peer{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .peer .t{font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size:15px;color:var(--ink2)}
 .peer .v{font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
 .peer .c{font-family:var(--f-tick);font-stretch:82%;font-size:13px;font-variant-numeric:tabular-nums;width:100%}
 .pos{color:var(--up)} .neg{color:var(--down)}
 
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0;margin-top:12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0;margin-top:10px}  /* 10px between panels, as in every app */
 .panel h2{margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.04em;color:var(--ink2);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .panel h2 span{font-weight:400;color:var(--muted);letter-spacing:0}
 .tabctl{margin-top:14px}
@@ -666,7 +666,7 @@ async function liveQuotes(d){
 }
 // When a newer version of the app is published, reload to pick it up (the version is the
 // service worker's cache name; bump both together).
-const APP_VER="tqqq-v17";
+const APP_VER="tqqq-v18";
 async function newerApp(){
   try{const t=await(await fetch("sw.js?ts="+Date.now(),{cache:"no-store"})).text();const m=t.match(/CACHE = "([^"]+)"/);
     // at most one reload per new version, in case the page itself is still served from a cache
