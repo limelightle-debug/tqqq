@@ -181,6 +181,7 @@ tr.hl td{background:var(--chip)}
         <div class="readout" id="pread"></div>
         <div class="chart" id="pchart"></div>
       </div>
+     <section class="panel books" data-books="vix:11"></section>
     </section>
 
     <!-- tab 2: monthly return distribution -->
@@ -203,6 +204,7 @@ tr.hl td{background:var(--chip)}
         <div class="readout" id="kread" style="margin-top:10px"></div>
         <div class="chart" id="kchart"></div>
       </div>
+     <section class="panel books" data-books="vix:11"></section>
     </section>
 
     <!-- tab 3: holding period -->
@@ -233,6 +235,7 @@ tr.hl td{background:var(--chip)}
         <h2 data-i18n="dataCagr">データ：年率（CAGR）</h2>
         <div class="tscroll"><table id="htable2"></table></div>
       </div>
+     <section class="panel books" data-books="vix:11:15 shippai"></section>
     </section>
 
     <div class="foot lab"><span class="labname"><img src="icons/lab.jpg" alt="" width="36" height="36"><span data-i18n="lab">恐怖指数研究所</span></span><a href="https://limelightle-debug.github.io/ndx-heatmap/" data-i18n="openNdx">Nasdaq 100 を開く</a></div>
@@ -241,6 +244,7 @@ tr.hl td{background:var(--chip)}
 </div>
 
 <script src="d3.min.js"></script>
+<script src="books.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 /* ---------- language (日本語 / English) ---------- */
@@ -666,7 +670,7 @@ async function liveQuotes(d){
 }
 // When a newer version of the app is published, reload to pick it up (the version is the
 // service worker's cache name; bump both together).
-const APP_VER="tqqq-v18";
+const APP_VER="tqqq-v19";
 async function newerApp(){
   try{const t=await(await fetch("sw.js?ts="+Date.now(),{cache:"no-store"})).text();const m=t.match(/CACHE = "([^"]+)"/);
     // at most one reload per new version, in case the page itself is still served from a cache
