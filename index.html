@@ -12,14 +12,14 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="TQQQ">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0f1114">
+<meta name="theme-color" content="#050506">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=LINE+Seed+JP:wght@400;700;800&display=swap">
 <style>
 :root{
-  --bg:#0f1114; --panel:#171a1f; --ink:#eef0f2; --ink2:#b9bfc8; --muted:#848c97; --line:#2a2f37; --accent:#5ea4ff;
-  --up:#2db069; --down:#ea4a51; --chip:#22262d; --shade:rgba(0,0,0,.35);
+  --bg:#050506; --panel:#0e0e11; --ink:#f4f4f6; --ink2:#cfcfd6; --muted:#8c8c96; --line:#25252b; --accent:#ff2d55;
+  --up:#2db069; --down:#ea4a51; --chip:#17171b; --shade:rgba(0,0,0,.35);
   --s-tqqq:#f07aa8; --s-qld:#4fb35c; --s-qqq:#9a7fd6; --s-hist:#f07aa8; --s-hist-neg:#a8456e;
   --f-tick:"Archivo","Helvetica Neue",Arial,sans-serif;
   --f-body:"LINE Seed JP","Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;
@@ -127,7 +127,7 @@ tr.hl td{background:var(--chip)}
 .labname img{width:36px;height:36px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 1px var(--line)}
 @media (max-width:420px){.price .p{font-size:40px}.seg button{padding:8px 9px;font-size:12.5px}}
 @media (prefers-reduced-motion:reduce){.refresh.spin{animation:none}}
-.langseg{display:flex;background:var(--chip,#1a1a36);border:1px solid var(--line);border-radius:8px;padding:2px;gap:2px;flex:none}.langseg button{appearance:none;border:0;background:transparent;color:var(--muted);font:700 12px/1 inherit;letter-spacing:.04em;padding:7px 9px;border-radius:6px;cursor:pointer}.langseg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.9),0 1px 2px rgba(0,0,0,.4)}
+.langseg{display:flex;background:var(--chip,#17171b);border:1px solid var(--line);border-radius:8px;padding:2px;gap:2px;flex:none}.langseg button{appearance:none;border:0;background:transparent;color:var(--muted);font:700 12px/1 inherit;letter-spacing:.04em;padding:7px 9px;border-radius:6px;cursor:pointer}.langseg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.9),0 1px 2px rgba(0,0,0,.4)}
 </style>
 </head>
 <body>
@@ -670,7 +670,7 @@ async function liveQuotes(d){
 }
 // When a newer version of the app is published, reload to pick it up (the version is the
 // service worker's cache name; bump both together).
-const APP_VER="tqqq-v21";
+const APP_VER="tqqq-v22";
 async function newerApp(){
   try{const t=await(await fetch("sw.js?ts="+Date.now(),{cache:"no-store"})).text();const m=t.match(/CACHE = "([^"]+)"/);
     // at most one reload per new version, in case the page itself is still served from a cache
