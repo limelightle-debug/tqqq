@@ -128,6 +128,7 @@ tr.hl td{background:var(--chip)}
 @media (max-width:420px){.price .p{font-size:40px}.seg button{padding:8px 9px;font-size:12.5px}}
 @media (prefers-reduced-motion:reduce){.refresh.spin{animation:none}}
 .langseg{display:flex;background:var(--chip,#17171b);border:1px solid var(--line);border-radius:8px;padding:2px;gap:2px;flex:none}.langseg button{appearance:none;border:0;background:transparent;color:var(--muted);font:700 12px/1 inherit;letter-spacing:.04em;padding:7px 9px;border-radius:6px;cursor:pointer}.langseg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.9),0 1px 2px rgba(0,0,0,.4)}
+.dprob{margin-top:6px;font-size:14px;color:var(--ink);font-weight:700}
 </style>
 </head>
 <body>
@@ -257,7 +258,7 @@ const I18N={
   r3M:"3ヶ月",r6M:"6ヶ月",r1Y:"1年",r2Y:"2年",r5Y:"5年",r10Y:"10年",rALL:"全期間",x:"倍",updated:v=>`更新 ${v}`,open:"米国市場 取引中",closed:"米国市場 時間外",stale:"更新が遅れています",
   latest:"最新値",closeOf:d=>`${d}の終値`,high:"高値",low:"安値",prevClose:"前日終値",ath:"上場来高値",yearN:k=>`${k}年`,monthN:m=>`${m}月`,vsPrevYE:"前年末比",vsPrevME:"前月末比",provHigh:n=>`${n}高値（暫定）`,provLow:n=>`${n}安値（暫定）`,
   noPeer:"この期間には QQQ・QLD のデータがありません",cmpAria:"TQQQ・QLD・QQQの騰落率の比較",start:"起点",candleAria:"TQQQのローソク足チャート",cl:"終",op:"始",hi:"高",lo:"安",fitLine:"近似線",fitCurve:"近似曲線",fitX:"x＝期間の始まりからの年数",fitAnn:"近似の年率",r2:"R²（対数で計算）",r2s:"1に近いほど良い",fitDev:"近似線との差",
-  mean:"平均（算術）",monthly:"月次",median:"中央値",geo:"幾何平均",annual:"年率",months:"月数",geoLine:"幾何平均",distAria:"TQQQの月次騰落率の分布",nMonths:n=>`${n}ヶ月`,thisMonth:k=>`今月（${k}、途中）`,thisBar:"▼の棒",tapBar:"棒をタップすると、その範囲に入った月が出ます",
+  mean:"平均（算術）",monthly:"月次",median:"中央値",geo:"幾何平均",annual:"年率",months:"月数",geoLine:"幾何平均",distAria:"TQQQの月次騰落率の分布",nMonths:n=>`${n}ヶ月`,thisMonth:k=>`今月（${k}、途中）`,thisBar:"▼の棒",probLE:(p,k,n)=>`この下げ以下になった月は ${p}%（${n}ヶ月中${k}ヶ月）`,probGE:(p,k,n)=>`この上げ以上になった月は ${p}%（${n}ヶ月中${k}ヶ月）`,tapBar:"棒をタップすると、その範囲に入った月が出ます",
   msub:(m,a)=>`月次 ${m}（年率 ${a}）の複利`,holdPeriod:"保有期間",multiple:"倍率",formula:"計算式",winRate:"勝率",avgWin:"平均勝ち幅",avgLoss:"平均負け幅",kellyOpt:"ケリー最適",halfKelly:"ハーフケリー",vsNdx:"対Nasdaq100",worstMonthT:"TQQQ最悪の月",
   tqqqRatio:"TQQQ比率",annGrowth:"年率成長",worstMonth:"最悪の月",half:"ハーフ",kelly:"ケリー",x3:"3倍",expoAria:"実効露出と年率成長",tqqqShort:"TQQQ",
   fitName:"TQQQ近似",yearsN:n=>`${n}年`,holdYears:"保有年数",fitCol:"近似",yearCol:"年",lhSub:"ある年の安値で買い、N年後の年の高値で売る",eeSub:"ある年の年末に買い、N年後の年末に売る",
@@ -268,7 +269,7 @@ const I18N={
   r3M:"3M",r6M:"6M",r1Y:"1Y",r2Y:"2Y",r5Y:"5Y",r10Y:"10Y",rALL:"All",x:"x",updated:v=>`Updated ${v}`,open:"US market open",closed:"US market closed",stale:"Update delayed",
   latest:"Latest",closeOf:d=>`${d} close`,high:"High",low:"Low",prevClose:"Prev. close",ath:"All-time high",yearN:k=>`${k}`,monthN:m=>MON[m-1],vsPrevYE:"vs prev. year-end",vsPrevME:"vs prev. month-end",provHigh:n=>`${n} high (so far)`,provLow:n=>`${n} low (so far)`,
   noPeer:"No QQQ or QLD data for this period",cmpAria:"Performance of TQQQ, QLD and QQQ",start:"Start",candleAria:"TQQQ candlestick chart",cl:"C",op:"O",hi:"H",lo:"L",fitLine:"Fit",fitCurve:"Fitted curve",fitX:"x = years from the start of the period",fitAnn:"Fitted annual rate",r2:"R² (on logs)",r2s:"Closer to 1 is better",fitDev:"Gap to the fit",
-  mean:"Mean (arithmetic)",monthly:"Monthly",median:"Median",geo:"Geometric mean",annual:"Annual",months:"Months",geoLine:"Geo. mean",distAria:"Distribution of TQQQ's monthly returns",nMonths:n=>`${n} mo`,thisMonth:k=>`This month (${k}, so far)`,thisBar:"▼ bar",tapBar:"Tap a bar to list the months in that range",
+  mean:"Mean (arithmetic)",monthly:"Monthly",median:"Median",geo:"Geometric mean",annual:"Annual",months:"Months",geoLine:"Geo. mean",distAria:"Distribution of TQQQ's monthly returns",nMonths:n=>`${n} mo`,thisMonth:k=>`This month (${k}, so far)`,thisBar:"▼ bar",probLE:(p,k,n)=>`Months this bad or worse: ${p}% (${k} of ${n})`,probGE:(p,k,n)=>`Months this good or better: ${p}% (${k} of ${n})`,tapBar:"Tap a bar to list the months in that range",
   msub:(m,a)=>`Compounding ${m} a month (${a} a year)`,holdPeriod:"Holding",multiple:"Multiple",formula:"Formula",winRate:"Win rate",avgWin:"Avg. win",avgLoss:"Avg. loss",kellyOpt:"Kelly optimum",halfKelly:"Half Kelly",vsNdx:"vs Nasdaq 100",worstMonthT:"TQQQ worst month",
   tqqqRatio:"TQQQ share",annGrowth:"Annual growth",worstMonth:"Worst month",half:"Half",kelly:"Kelly",x3:"3x",expoAria:"Effective exposure and annual growth",tqqqShort:"TQQQ",
   fitName:"TQQQ fit",yearsN:n=>`${n}y`,holdYears:"Years held",fitCol:"Fit",yearCol:"Yrs",lhSub:"Buy at a year's low, sell at the high N years later",eeSub:"Buy at a year end, sell at the year end N years later",
@@ -498,8 +499,8 @@ function renderDist(){
   el._geo={ML,PW,n:bins.length,bins};
   const show=state.di!=null&&bins[state.di]?bins[state.di]:null;
   // below the chart, so the chart never moves; every month in the bar, oldest first, with its return
-  $("dread").innerHTML=show?`<div class="dhead"><b>${pct(show.lo)} 〜 ${pct(show.hi)}</b><span>${tr("nMonths",show.c)}</span></div>${show.ms.length?`<div class="dmonths">${show.ms.map(m=>`<span><i>${m.k.replace("-","/")}</i>${pct(m.r)}</span>`).join("")}</div>`:""}`
-    :cur?`<div class="dhead"><b>${tr("thisMonth",cur.k.replace("-","/"))}</b><span>${pct(cur.r)}　${tr("thisBar")}</span></div>`:`<div class="dhead"><span>${tr("tapBar")}</span></div>`;
+  $("dread").innerHTML=show?`<div class="dhead"><b>${pct(show.lo)} 〜 ${pct(show.hi)}</b><span>${tr("nMonths",show.c)}（${(show.c/n*100).toFixed(1)}%）</span></div>${show.ms.length?`<div class="dmonths">${show.ms.map(m=>`<span><i>${m.k.replace("-","/")}</i>${pct(m.r)}</span>`).join("")}</div>`:""}`
+    :cur?`<div class="dhead"><b>${tr("thisMonth",cur.k.replace("-","/"))}</b><span>${pct(cur.r)}　${tr("thisBar")}</span></div><div class="dprob">${(()=>{const k=cur.r<0?rs.filter(r=>r<=cur.r).length:rs.filter(r=>r>=cur.r).length;return tr(cur.r<0?"probLE":"probGE",(k/n*100).toFixed(1),k,n)})()}</div>`:`<div class="dhead"><span>${tr("tapBar")}</span></div>`;
   renderKelly(rs);
   // multiples
   const ys=[1,5,10,15,20];
@@ -670,7 +671,7 @@ async function liveQuotes(d){
 }
 // When a newer version of the app is published, reload to pick it up (the version is the
 // service worker's cache name; bump both together).
-const APP_VER="tqqq-v23";
+const APP_VER="tqqq-v24";
 async function newerApp(){
   try{const t=await(await fetch("sw.js?ts="+Date.now(),{cache:"no-store"})).text();const m=t.match(/CACHE = "([^"]+)"/);
     // at most one reload per new version, in case the page itself is still served from a cache
