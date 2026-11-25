@@ -161,8 +161,20 @@ QQQ_HOLDINGS = ("https://dng-api.invesco.com/cache/v1/accounts/en_US/shareclasse
 def fetch_holdings():
     """Index weights and names from the holdings of Invesco QQQ, which fully replicates the Nasdaq-100.
     GOOG and GOOGL are merged into one Alphabet line (GOOGL); weights are rescaled to sum to 100 over the stocks."""
-    j = get(QQQ_HOLDINGS, headers={"Origin": "https://www.invesco.com",
-                                   "Referer": "https://www.invesco.com/qqq-etf/en/about.html"}).json()
+    j = None
+    for h in ({"User-Agent": UA, "Accept": "application/json", "Origin": "https://www.invesco.com",
+               "Referer": "https://www.invesco.com/qqq-etf/en/about.html"}, {"User-Agent": UA, "Accept": "*/*"}):
+        try:
+            r = requests.get(QQQ_HOLDINGS, headers=h, timeout=30)
+            if r.status_code == 200:
+                j = r.json()
+                break
+            print(f"warning: QQQ holdings: HTTP {r.status_code}", file=sys.stderr)
+        except (requests.RequestException, ValueError) as e:
+            print(f"warning: QQQ holdings: {e}", file=sys.stderr)
+        time.sleep(3)
+    if j is None:
+        raise RuntimeError("QQQ holdings unavailable")
     w, names, total = {}, {}, 0.0
     for h in j.get("holdings", []):
         pct, ticker = h.get("percentageOfTotalNetAssets"), h.get("ticker")
