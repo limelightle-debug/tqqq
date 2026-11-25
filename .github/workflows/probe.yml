@@ -1,0 +1,25 @@
+name: probe
+on: workflow_dispatch
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: |
+          python3 - <<'PY'
+          import json, urllib.request
+          UA={"User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36","Accept":"application/json"}
+          def g(u,h={}):
+              try:
+                  r=urllib.request.urlopen(urllib.request.Request(u,headers={**UA,**h}),timeout=30);return r.read().decode()
+              except Exception as e: return "ERR "+str(e)
+          t=g("https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=AAPL|NVDA|GOOGL&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=1&output=json&events=1")
+          print("CNBC", t[:2500])
+          print("CBOEQ", g("https://cdn.cboe.com/api/global/delayed_quotes/quotes/AAPL.json")[:1200])
+          h=g("https://cdn.cboe.com/api/global/delayed_quotes/charts/historical/AAPL.json")
+          print("CBOEH", h[:400], len(h))
+          inv=g("https://dng-api.invesco.com/cache/v1/accounts/en_US/shareclasses/QQQ/holdings/fund?idType=ticker&interval=monthly&productType=ETF",{"Origin":"https://www.invesco.com","Referer":"https://www.invesco.com/qqq-etf/en/about.html"})
+          try:
+              j=json.loads(inv);print("INV keys",list(j));print("INV h0",json.dumps(j["holdings"][:2])[:1500])
+          except Exception as e: print("INV",inv[:300])
+          PY
