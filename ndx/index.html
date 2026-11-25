@@ -296,7 +296,7 @@ body[data-view="list"] .maphead,body[data-view="weight"] .maphead{display:none} 
     </div>
     <div class="controls">
       <!-- first row: this app, and the institute's アプリ and 書籍 (added by suite.js); the views below are the second row -->
-      <div class="seg" id="tabs" role="group"><button type="button" data-go="chart" data-i18n="tabChart">チャート</button><button type="button" data-go="dist" data-i18n="tabDist">分布</button><button type="button" data-go="hold" data-i18n="tabHold">リターン</button><button type="button" data-tab="ndx" aria-pressed="true">NDX</button></div>
+      <div class="seg" id="tabs" role="group"><button type="button" data-go>TQQQ</button><button type="button" data-tab="ndx" aria-pressed="true">NASDAQ 100</button></div>
       <div class="seg" id="views" role="group" aria-label="表示">
         <button type="button" data-v="chart" data-i18n="vChart">チャート</button>
         <button type="button" data-v="list" data-i18n="vList">騰落率</button>
@@ -975,7 +975,7 @@ load(false);
 </script>
 <script>
 // TQQQ's own tabs live on the TQQQ page
-$("tabs").addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(b)location.href="./?tab="+b.dataset.go});
+$("tabs").addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(b)location.href="./"});
 </script>
 <script src="../fear-index/suite.js"></script>
 <script>window.Suite&&Suite.foot(".foot.lab");window.Suite&&Suite.mount({hide:["#app","#views","#periods"],after:"#app"})</script>

@@ -49,6 +49,7 @@ h1{margin:0;font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size
 .refresh.spin{animation:spin .9s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#tview{flex:1 1 100%;width:100%}#tview button{flex:1 1 0;min-width:0;padding-left:2px;padding-right:2px}
 .seg{display:flex;background:var(--chip);border-radius:8px;padding:3px;gap:2px;overflow-x:auto;max-width:100%;scrollbar-width:none}
 .seg::-webkit-scrollbar{display:none}
 .seg button{appearance:none;border:0;background:transparent;color:var(--ink2);font:500 13px/1 var(--f-body);padding:8px 11px;border-radius:6px;cursor:pointer;white-space:nowrap}
@@ -145,11 +146,11 @@ tr.hl td{background:var(--chip)}
       <span class="tbtns"><div class="langseg" id="lang" role="group" aria-label="Language"><button type="button" data-lang="ja">JP</button><button type="button" data-lang="en">EN</button></div><button type="button" class="refresh" id="refresh" aria-label="Refresh">↻</button></span>
     </div>
     <div class="controls">
-      <div class="seg" id="tabs" role="group" aria-label="表示">
+      <div class="seg" id="tabs" role="group"><button type="button" aria-pressed="true">TQQQ</button><button type="button" data-ndx>NASDAQ 100</button></div>
+      <div class="seg" id="tview" role="group" aria-label="表示">
         <button type="button" data-tab="chart" data-i18n="tabChart">チャート</button>
         <button type="button" data-tab="dist" data-i18n="tabDist">分布</button>
         <button type="button" data-tab="hold" data-i18n="tabHold">リターン</button>
-        <button type="button" data-ndx>NDX</button>
       </div>
     </div>
   </div>
@@ -622,7 +623,7 @@ function renderHold(){
 
 /* ---------- render ---------- */
 function renderControls(){
-  document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.tab===state.tab));
+  document.querySelectorAll("#tview button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.tab===state.tab));
   document.querySelectorAll("#tf button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.tf===state.tf));
   document.querySelectorAll("#scale button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.sc===state.sc));
   document.querySelectorAll("#hmode button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.hm===state.hm));
@@ -674,7 +675,7 @@ async function liveQuotes(d){
 }
 // When a newer version of the app is published, reload to pick it up (the version is the
 // service worker's cache name; bump both together).
-const APP_VER="tqqq-v25";
+const APP_VER="tqqq-v26";
 async function newerApp(){
   try{const t=await(await fetch("sw.js?ts="+Date.now(),{cache:"no-store"})).text();const m=t.match(/CACHE = "([^"]+)"/);
     // at most one reload per new version, in case the page itself is still served from a cache
@@ -755,6 +756,6 @@ applyLang();renderAll();load(false);
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
 </script>
 <script src="../fear-index/suite.js"></script>
-<script>window.Suite&&Suite.foot(".foot.lab");window.Suite&&Suite.mount({hide:["#app"],after:"#app"})</script>
+<script>window.Suite&&Suite.foot(".foot.lab");window.Suite&&Suite.mount({hide:["#app","#tview"],after:"#app"})</script>
 </body>
 </html>
