@@ -33,7 +33,7 @@
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
-.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(40px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:1000px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(40px + env(safe-area-inset-bottom,0px))}
 .num{font-family:var(--f-tick);font-variant-numeric:tabular-nums;letter-spacing:.01em}
 /* Archivo runs semi-condensed wherever tickers and figures sit */
 .num,.tile,.crow .tk,.row .tk,.dtk,.stat .val,h1,.pc .n,.sec .sh b,#tip b{font-stretch:82%}
@@ -44,7 +44,7 @@ body[data-view="chart"] .mapbox,body[data-view="weight"] #periods,body[data-view
 
 .bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);padding-block:12px 10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
 .titlerow{display:flex;align-items:center;justify-content:space-between;gap:12px}
-h1{margin:0;white-space:nowrap;font-family:var(--f-tick);font-weight:700;font-size:26px;letter-spacing:.02em;line-height:1.1}
+h1{margin:0;white-space:nowrap;font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size:26px;letter-spacing:.02em;line-height:1.1}
 h1 small{font-family:var(--f-body);font-weight:500;font-size:13px;color:var(--muted);margin-left:8px;letter-spacing:0}
 .status{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);flex-wrap:wrap}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--chip);color:var(--ink2)}
@@ -266,7 +266,6 @@ body[data-view="list"] .maphead,body[data-view="weight"] .maphead{display:none} 
 @media (max-width:760px){
   .summary{grid-template-columns:repeat(2,minmax(0,1fr))}
   .cols{grid-template-columns:minmax(0,1fr)}
-  h1{font-size:23px}
   .row{grid-template-columns:24px 54px minmax(0,1fr) 64px}
   .row .bc{display:none}
 }
@@ -283,6 +282,8 @@ body[data-view="list"] .maphead,body[data-view="weight"] .maphead{display:none} 
 .refresh{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);width:40px;height:40px;border-radius:50%;font-size:19px;line-height:1;cursor:pointer;flex:none}
 .refresh.spin{animation:spin .9s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+@view-transition{navigation:auto}
+::view-transition-group(root){animation-duration:0s}
 </style>
 </head>
 <body>
