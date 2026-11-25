@@ -161,18 +161,16 @@ QQQ_HOLDINGS = ("https://dng-api.invesco.com/cache/v1/accounts/en_US/shareclasse
 def fetch_holdings():
     """Index weights and names from the holdings of Invesco QQQ, which fully replicates the Nasdaq-100.
     GOOG and GOOGL are merged into one Alphabet line (GOOGL); weights are rescaled to sum to 100 over the stocks."""
+    import urllib.request
     j = None
-    for h in ({"User-Agent": UA, "Accept": "application/json", "Origin": "https://www.invesco.com",
-               "Referer": "https://www.invesco.com/qqq-etf/en/about.html"}, {"User-Agent": UA, "Accept": "*/*"}):
+    for attempt in range(2):
         try:
-            r = requests.get(QQQ_HOLDINGS, headers=h, timeout=30)
-            if r.status_code == 200:
-                j = r.json()
-                break
-            print(f"warning: QQQ holdings: HTTP {r.status_code}", file=sys.stderr)
-        except (requests.RequestException, ValueError) as e:
+            req = urllib.request.Request(QQQ_HOLDINGS, headers={"User-Agent": UA, "Accept": "application/json"})
+            j = json.loads(urllib.request.urlopen(req, timeout=30).read().decode())
+            break
+        except Exception as e:  # noqa: BLE001
             print(f"warning: QQQ holdings: {e}", file=sys.stderr)
-        time.sleep(3)
+            time.sleep(3)
     if j is None:
         raise RuntimeError("QQQ holdings unavailable")
     w, names, total = {}, {}, 0.0
@@ -225,6 +223,19 @@ def fetch_quotes(tickers):
     return out
 
 
+def nasdaq_quote(t):
+    p = (nasdaq_stock(t, "info").get("primaryData")) or {}
+    last = num(p["lastSalePrice"])
+    prev = round(last - num(p.get("netChange") or 0), 4)
+    summ = nasdaq_stock(t, "summary").get("summaryData") or {}
+    cap = (summ.get("MarketCap") or {}).get("value")
+    pc = (summ.get("PreviousClose") or {}).get("value")
+    if pc:
+        prev = num(pc)
+    return {"last": last, "prev": prev, "day": quote_day(p.get("lastTradeTimestamp")),
+            "cap": round(num(cap) / 1e6) if cap else None, "name": None}
+
+
 def nasdaq_stock(t, path, query=""):
     r = requests.get(f"https://api.nasdaq.com/api/quote/{t}/{path}?assetclass=stocks{query}",
                      headers=NASDAQ_HEADERS, timeout=30)
@@ -248,29 +259,39 @@ def stock_closes(t, today):
 
 
 def update_hist(tickers):
-    """Each stock's daily closes, refreshed once a day after the close (and for a stock not yet kept)."""
-    hist = json.loads(HIST.read_text(encoding="utf-8")) if HIST.exists() else {"updated": None, "c": {}}
+    """Each stock's daily closes, refreshed once a day after the close (and for a stock not yet kept).
+    Kept as one list of days and, per stock, the closes on those days (None where missing): {t: {yyyymmdd: close}}."""
+    hist = json.loads(HIST.read_text(encoding="utf-8")) if HIST.exists() else {}
+    days = hist.get("d") or []
+    have = {t: {d: v for d, v in zip(days, c) if v is not None} for t, c in (hist.get("c") or {}).items()}
     now = datetime.now(NY)
     today = now.date()
-    due = hist.get("updated") != str(today) and now.hour * 60 + now.minute >= 16 * 60 + 30
-    want = [t for t in tickers if due or t not in hist["c"]]
+    # due when the kept closes stop before the index's latest official day (Nasdaq.com posts a day's closes some
+    # time after the close); tried at most once an hour
+    try:
+        target = max(r[0] for r in json.loads(INDEX_DAILY.read_text(encoding="utf-8"))["daily"])
+    except Exception:  # noqa: BLE001
+        target = None
+    tried = hist.get("tried")
+    due = bool(target and (not days or days[-1] < target)
+               and (not tried or (datetime.now(timezone.utc) - datetime.fromisoformat(tried)).total_seconds() > 3600))
+    want = [t for t in tickers if due or t not in have]
     got = 0
     for t in want:
         try:
-            hist["c"][t] = {str(k): v for k, v in sorted(stock_closes(t, today).items())}
+            have[t] = stock_closes(t, today)
             got += 1
         except Exception as e:  # noqa: BLE001  (one stock must not stop the rest)
             print(f"warning: closes {t}: {e}"[:200], file=sys.stderr)
         time.sleep(0.4)
-    if due and got >= len(want) * 0.9:
-        hist["updated"] = str(today)
-    for t in list(hist["c"]):
-        if t not in tickers:
-            del hist["c"][t]
+    have = {t: v for t, v in have.items() if t in tickers}
     if want:
-        HIST.write_text(json.dumps(hist, separators=(",", ":")) + "\n", encoding="utf-8")
+        days = sorted({d for v in have.values() for d in v})[-300:]
+        out = {"tried": datetime.now(timezone.utc).isoformat(timespec="seconds") if due else tried, "d": days,
+               "c": {t: [round(v[d], 2) if d in v else None for d in days] for t, v in sorted(have.items())}}
+        HIST.write_text(json.dumps(out, separators=(",", ":")) + "\n", encoding="utf-8")
         print(f"closes: {got}/{len(want)} stocks")
-    return hist["c"]
+    return have
 
 
 def perf_of(closes, q):
@@ -353,9 +374,23 @@ def main():
         sys.exit("no holdings")
     tickers = sorted(weights["w"])
     quotes = fetch_quotes(tickers)
+    for t in [t for t in tickers if t not in quotes]:
+        try:
+            quotes[t] = nasdaq_quote(t)
+        except Exception as e:  # noqa: BLE001
+            print(f"warning: quote {t}: {e}"[:200], file=sys.stderr)
     if len(quotes) < 90:
         print(f"warning: only {len(quotes)} quotes; keeping the previous data", file=sys.stderr)
         quotes = {}
+    try:
+        index = fetch_index() or old.get("index")
+    except Exception as e:  # noqa: BLE001
+        print(f"warning: index: {e}", file=sys.stderr)
+        index = old.get("index")
+    try:
+        update_index_daily(index)
+    except Exception as e:  # noqa: BLE001
+        print(f"warning: index history: {e}", file=sys.stderr)
     closes = update_hist(tickers)
     prev_names = {s["t"]: s["name"] for s in old.get("stocks") or []}
     stocks, perf = [], {p: {} for p in PERIODS}
@@ -372,15 +407,6 @@ def main():
         stocks.sort(key=lambda s: -s["cap"])
     else:
         stocks, perf = old.get("stocks") or [], old.get("perf") or perf
-    try:
-        index = fetch_index() or old.get("index")
-    except Exception as e:  # noqa: BLE001
-        print(f"warning: index: {e}", file=sys.stderr)
-        index = old.get("index")
-    try:
-        update_index_daily(index)
-    except Exception as e:  # noqa: BLE001
-        print(f"warning: index history: {e}", file=sys.stderr)
     if quotes:
         try:
             update_rank_history(stocks)
