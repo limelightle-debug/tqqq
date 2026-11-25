@@ -18,7 +18,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -31,9 +31,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          python scripts/update_tqqq.py || echo "update failed; trying again next time"
+          timeout 300 python scripts/update_tqqq.py || echo "update failed; trying again next time"
+          # the Nasdaq 100 page (ndx/): stocks, weights and the index
+          timeout 480 python scripts/update_ndx.py || echo "ndx update failed; trying again next time"
           git add data/
           if ! git diff --cached --quiet; then
-            git commit -q -m "data: update TQQQ"
+            git commit -q -m "data: update TQQQ and Nasdaq 100"
             git pull -q --rebase origin main && git push -q || echo "push failed; trying again next time"
           fi

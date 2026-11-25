@@ -149,6 +149,7 @@ tr.hl td{background:var(--chip)}
         <button type="button" data-tab="chart" data-i18n="tabChart">チャート</button>
         <button type="button" data-tab="dist" data-i18n="tabDist">分布</button>
         <button type="button" data-tab="hold" data-i18n="tabHold">リターン</button>
+        <button type="button" data-ndx>NDX</button>
       </div>
     </div>
   </div>
@@ -287,6 +288,8 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"
 const store={get(k,d){try{const v=localStorage.getItem("tqqq."+k);return v==null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem("tqqq."+k,v)}catch(e){}}};
 const RANGES={d:[["3M","r3M",63],["6M","r6M",126],["1Y","r1Y",252],["2Y","r2Y",504]],w:[["1Y","r1Y",52],["2Y","r2Y",104],["5Y","r5Y",260],["ALL","rALL",0]],m:[["5Y","r5Y",60],["10Y","r10Y",120],["ALL","rALL",0]]};
 const DEF_RANGE={d:"6M",w:"2Y",m:"ALL"};
+// the Nasdaq 100 page (ndx/) links back here with ?tab=
+(()=>{const t=new URLSearchParams(location.search).get("tab");if(t)store.set("tab",t)})();
 const state={tab:store.get("tab","chart"),tf:store.get("tf","d"),sc:store.get("sc","lin"),range:{d:store.get("r_d",DEF_RANGE.d),w:store.get("r_w",DEF_RANGE.w),m:store.get("r_m",DEF_RANGE.m)},hm:store.get("hm","lh"),ci:null,di:null,hi:null,ki:null,pi:null};
 if(!["chart","dist","hold"].includes(state.tab))state.tab="chart";
 if(!RANGES[state.tf])state.tf="d";
@@ -671,7 +674,7 @@ async function liveQuotes(d){
 }
 // When a newer version of the app is published, reload to pick it up (the version is the
 // service worker's cache name; bump both together).
-const APP_VER="tqqq-v24";
+const APP_VER="tqqq-v25";
 async function newerApp(){
   try{const t=await(await fetch("sw.js?ts="+Date.now(),{cache:"no-store"})).text();const m=t.match(/CACHE = "([^"]+)"/);
     // at most one reload per new version, in case the page itself is still served from a cache
@@ -697,6 +700,7 @@ async function load(manual){
 /* ---------- events ---------- */
 document.addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.ndx!==undefined){location.href="ndx/";return}
   if(b.dataset.tab){state.tab=b.dataset.tab;store.set("tab",state.tab);renderControls();renderTab();return}
   if(b.dataset.tf){state.tf=b.dataset.tf;store.set("tf",state.tf);state.ci=null;renderControls();renderCandles();return}
   if(b.dataset.sc){state.sc=b.dataset.sc;store.set("sc",state.sc);renderControls();renderCandles();return}

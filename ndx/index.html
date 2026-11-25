@@ -1,0 +1,983 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<base href="../">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Nasdaq 100</title>
+<meta name="description" content="ナスダック100の騰落率、寄与度、セクター、ランキング">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Nasdaq 100">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#050506">
+<meta name="color-scheme" content="dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=LINE+Seed+JP:wght@400;700;800&display=swap">
+<style>
+/* Layout: sticky control bar (tabs, period) → index → treemap / ranked list (with its breadth panel) / weights / candle chart */
+:root{
+  /* always dark, like the TQQQ app */
+  --bg:#050506; --panel:#0e0e11; --ink:#f4f4f6; --ink2:#cfcfd6; --muted:#8c8c96; --line:#25252b; --accent:#2ee6ff;
+  --up:#2db069; --down:#ea4a51; --upAlt:#4a8df0; --mid:#363b44; --na:#2a2e35; --chip:#17171b; --shade:rgba(0,0,0,.35);
+  --f-tick:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"LINE Seed JP","Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(40px + env(safe-area-inset-bottom,0px))}
+.num{font-family:var(--f-tick);font-variant-numeric:tabular-nums;letter-spacing:.01em}
+/* Archivo runs semi-condensed wherever tickers and figures sit */
+.num,.tile,.crow .tk,.row .tk,.dtk,.stat .val,h1,.pc .n,.sec .sh b,#tip b{font-stretch:82%}
+.avatar{width:42px;height:42px;border-radius:10px;flex:none;box-shadow:0 0 0 1px var(--line)}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+[hidden]{display:none!important}
+body[data-view="chart"] .mapbox,body[data-view="weight"] #periods,body[data-view="weight"] #price,body[data-view="weight"] #hint,body[data-view="weight"] .maphead .legend,body[data-view="list"] #hint,body[data-view="list"] .maphead .legend{display:none}
+
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);padding-block:12px 10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.titlerow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+h1{margin:0;white-space:nowrap;font-family:var(--f-tick);font-weight:700;font-size:26px;letter-spacing:.02em;line-height:1.1}
+h1 small{font-family:var(--f-body);font-weight:500;font-size:13px;color:var(--muted);margin-left:8px;letter-spacing:0}
+.status{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--chip);color:var(--ink2)}
+.pill i{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.pill.open i{background:var(--upc)}
+.pill.warn{color:var(--downc)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+/* every row of tabs spans the width with equal tabs, as the first row */
+#views,#periods{flex:1 1 100%;width:100%}#views button,#periods button{flex:1 1 0;min-width:0;padding-left:2px;padding-right:2px}
+.seg{display:flex;background:var(--chip);border-radius:8px;padding:3px;gap:2px;overflow-x:auto;max-width:100%;scrollbar-width:none}
+.seg::-webkit-scrollbar{display:none}
+.seg button{appearance:none;border:0;background:transparent;color:var(--ink2);font:500 13px/1 var(--f-body);padding:8px 11px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.9),0 1px 2px rgba(0,0,0,.4);font-weight:700}
+button:focus-visible,.crow:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:14px}
+.stat{background:var(--panel);padding:12px 14px;min-width:0}
+.stat .lab{font-size:11.5px;color:var(--muted);letter-spacing:.04em}
+.stat .val{font-family:var(--f-tick);font-weight:700;font-size:28px;line-height:1.15;font-variant-numeric:tabular-nums}
+.stat .sub{font-size:12px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pos{color:var(--upc)} .neg{color:var(--downc)}
+
+.lpanel{margin-bottom:10px}
+.lord{width:fit-content;margin:0 0 8px}
+.panel.lgroup{padding:0;overflow:hidden}
+.lsecs{padding:14px;border-top:1px solid var(--line)}
+.lmerge{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.lmerge .lc{padding:12px 14px;min-width:0}
+.lmerge .lfull{grid-column:1/3;border-bottom:1px solid var(--line)}
+.lud{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:baseline;gap:6px}  /* the flat count sits at the centre */
+.lud .l,.lud .r{display:flex;justify-content:space-between;align-items:baseline;gap:6px;min-width:0}
+.lud .sl{color:var(--muted);font-weight:500;white-space:pre}
+.lud .lab{white-space:nowrap}
+.lud>.val{color:var(--ink2)}
+.lud .lab{font-size:11px;color:var(--muted);letter-spacing:0}
+.lud .val{font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size:24px;line-height:1.1;font-variant-numeric:tabular-nums}
+.lud .sub{font-size:12px;color:var(--ink2)}
+.lmerge .lc:last-child:not(.lfull){border-left:1px solid var(--line)}
+.lmerge .stat{padding:0;background:none}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin:0 0 14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.panel h2{margin:0 0 10px;font-size:13px;font-weight:700;letter-spacing:.04em;color:var(--ink2);display:flex;justify-content:space-between;gap:8px}
+.ibox{margin-top:10px}
+.ctlrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.seg.sm button{padding:7px 9px;font-size:12.5px}
+.readout{font-size:12px;color:var(--ink2);height:40px;overflow:hidden;margin:8px 2px 2px;font-variant-numeric:tabular-nums}
+.readout .rrow{display:flex;gap:14px;white-space:nowrap;line-height:20px}
+.readout b{font-family:var(--f-tick);font-stretch:82%;color:var(--ink);font-size:13px}
+.ichart{position:relative;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.ichart svg{display:block;width:100%;height:auto;overflow:visible}
+.ichart .ax{font-family:var(--f-tick);font-stretch:82%;font-size:11px;fill:var(--muted)}
+.ichart .grid{stroke:var(--line);stroke-width:1}
+.ichart .xh{stroke:var(--ink2);stroke-width:1;stroke-dasharray:3 3}
+.panel h2 span{font-weight:400;color:var(--muted);letter-spacing:0}
+.contrib{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.contrib h3{margin:0 0 6px;font-size:12px;font-weight:500;color:var(--muted)}
+.crow{display:grid;grid-template-columns:52px minmax(0,1fr) 52px;align-items:center;gap:6px;height:28px;cursor:pointer;border-radius:4px}
+.crow:hover{background:var(--chip)}
+.crow .tk{font-family:var(--f-tick);font-weight:700;font-size:15px}
+.crow .track{height:10px;position:relative}
+.crow .fill{position:absolute;top:0;bottom:0;left:0;border-radius:0 4px 4px 0}
+.crow .v{text-align:right;font-size:14px}
+
+.secrow{appearance:none;border:0;background:transparent;color:inherit;font:inherit;width:100%;display:grid;grid-template-columns:minmax(78px,9em) 46px minmax(0,1fr) 62px;align-items:center;gap:8px;padding:6px;border-radius:6px;cursor:pointer;text-align:left}
+@media (hover:hover){.secrow:hover{background:var(--chip)}}  /* no sticky hover on touch: it read as a selection */
+.secrow[aria-pressed="true"]{background:var(--panel);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.9),0 1px 2px rgba(0,0,0,.4)}
+.secrow[aria-pressed="true"] .nm{font-weight:700}  /* picked like the other buttons; tap again to clear */
+.secrow .nm{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.secrow .wt{font-size:12px;color:var(--muted);text-align:right}
+.dbar{position:relative;height:12px}
+.dbar::before{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line)}
+.dbar i{position:absolute;top:1px;bottom:1px}
+.secrow .v{text-align:right;font-size:15px;font-weight:600}
+.secrow.indrow{padding:4px 6px}
+.secrow.indrow .nm{font-size:12px;padding-left:12px;color:var(--ink2)}
+.secrow.indrow .v{font-size:13px}
+
+.mapbox{margin-top:10px}  /* 10px between panels, as in every app */
+body[data-view="list"] .maphead,body[data-view="weight"] .maphead{display:none}  /* nothing to show there */
+/* the weights and the rank history sit in panels like the rest (the heatmap keeps its full width) */
+#weights,#ranks{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+#weights .wrow:not(.whead){background:var(--chip)}
+#list{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}  /* the ranking sits in a panel too */
+#list .row{background:var(--chip)}
+@media (hover:hover){#list .row:hover{background:var(--mid)}}
+#weights .wrow:not(.whead):hover{background:var(--mid)}
+.cols+.foot{margin-top:18px}
+.maphead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.maphead .hint{font-size:12px;color:var(--muted)}
+.back{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:500 13px/1 var(--f-body);padding:8px 12px;border-radius:999px;cursor:pointer}
+.legend{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted)}
+.legend .ramp{width:150px;height:10px;border-radius:3px}
+#map{position:relative;width:100%;background:var(--bg);border-radius:8px;overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.sec{position:absolute;pointer-events:none}
+.sec .sh{position:absolute;left:0;right:0;top:0;height:20px;display:flex;align-items:center;gap:6px;padding:0 4px;font-size:11.5px;font-weight:700;color:var(--ink2);white-space:nowrap;overflow:hidden}
+.sec .sh b{font-family:var(--f-tick);font-size:13px;font-weight:600;flex:none}
+.sec .sh span{min-width:2.3em;overflow:hidden;text-overflow:ellipsis}
+.ind{position:absolute;pointer-events:none;background:rgba(255,255,255,.07)}
+.ind .ih{position:absolute;left:0;right:0;top:0;height:14px;display:flex;align-items:center;gap:4px;padding:0 3px;font-size:10px;font-weight:600;line-height:1;color:var(--muted);white-space:nowrap;overflow:hidden}
+.ind .ih span{overflow:hidden;text-overflow:ellipsis}
+.ind .ih b{font-family:var(--f-tick);font-size:10.5px;font-weight:600;flex:none}
+.tile{position:absolute;appearance:none;border:0;padding:0;margin:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;font-family:var(--f-tick);line-height:1;transition:filter .12s}
+.tile:hover{filter:brightness(1.12)}
+.tile.sel{outline:2px solid var(--ink);outline-offset:-2px;z-index:2}
+.tile .t{font-weight:700;white-space:nowrap}
+.tile .p{font-weight:500;white-space:nowrap;margin-top:.18em;opacity:.95;font-variant-numeric:tabular-nums}
+
+#list{display:flex;flex-direction:column;gap:2px}
+.row{appearance:none;border:0;background:var(--panel);color:inherit;font:inherit;text-align:left;display:grid;grid-template-columns:30px 62px minmax(0,1fr) minmax(70px,26%) 70px;align-items:center;gap:8px;padding:9px 10px;border-radius:6px;cursor:pointer}
+.row:hover{background:var(--chip)}
+.lsum{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.lsl{font-size:11.5px;color:var(--muted);letter-spacing:.04em;margin-bottom:4px}
+.lsr{appearance:none;border:0;background:none;color:inherit;font:inherit;cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;width:100%;padding:3px 0}
+.lsr b{font-family:var(--f-tick);font-stretch:82%;font-size:17px}
+.lsr{height:31px;box-sizing:border-box;line-height:1;align-items:center}  /* a fixed row height, dashes included, so a small sector never moves the panel */
+.lsr0{color:var(--muted);cursor:default}
+.lsr span{font-size:17px;font-weight:700}
+.lsum>div+div{border-left:1px solid var(--line);padding-left:12px}
+.row .rk{font-size:12px;color:var(--muted);text-align:right}
+.row .tk{font-family:var(--f-tick);font-weight:700;font-size:17px}
+.row .nm{min-width:0}
+.row .nm div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px}
+.row .nm small{font-size:11px;color:var(--muted)}
+.row .v{text-align:right;font-size:17px;font-weight:600}
+
+/* weights view */
+.wtop{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.wstats{display:flex;gap:20px;flex-wrap:wrap}
+.wstats div{font-size:11.5px;color:var(--muted);letter-spacing:.04em}
+.wstats b{display:block;font-family:var(--f-tick);font-stretch:82%;font-size:24px;font-weight:700;color:var(--ink);letter-spacing:0;font-variant-numeric:tabular-nums;line-height:1.15}
+#wlist{display:flex;flex-direction:column;gap:2px}
+.wrow{appearance:none;border:0;background:var(--panel);color:inherit;font:inherit;text-align:left;display:grid;grid-template-columns:26px 58px minmax(0,1fr) 60px;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer}
+.wrow:hover{background:var(--chip)}
+.wrow.whead{background:none;cursor:default;padding-top:0;padding-bottom:2px;font-size:11px;color:var(--muted);letter-spacing:.04em;align-items:end}
+.wrow.whead:hover{background:none}
+.whead .wh2{grid-column:3/5;text-align:right}
+.wrow .rk{font-size:12px;color:var(--muted);text-align:right}
+.wrow .tk{font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size:16px;line-height:1.1}
+.wrow .tk small{display:block;font-family:var(--f-body);font-stretch:100%;font-weight:400;font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wbar{height:16px;position:relative;background:var(--chip);border-radius:3px;overflow:hidden}
+.wbar i{position:absolute;left:0;top:0;bottom:0;border-radius:0 3px 3px 0;background:var(--accent);opacity:.7}
+.wrow .w{text-align:right;font-size:16px;font-weight:700}
+.wrow .v{text-align:right;font-size:13px}
+.wsep{font-size:11px;color:var(--muted);padding:8px 10px 4px;letter-spacing:.04em}
+.wnote{font-size:11.5px;color:var(--muted);margin:10px 0 0}
+/* rank history view */
+#ranks{margin-top:10px}
+.wtitle{margin:2px 0 12px;display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.wtitle b{font-size:19px;font-weight:700;color:var(--ink);letter-spacing:.02em}
+.wtitle span{font-size:12px;color:var(--muted);white-space:nowrap}
+.rtop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.rtitle{font-size:13px;font-weight:700;color:var(--ink2);letter-spacing:.04em}
+.rkey{display:flex;gap:12px;font-size:11.5px;color:var(--muted);flex-wrap:wrap;margin-bottom:4px}
+.rkey i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+#rchart{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 4px 2px;touch-action:pan-y}
+#rchart svg{display:block;width:100%;height:auto;overflow:visible}
+#rchart .ax{font-family:var(--f-tick);font-stretch:82%;font-size:11px;fill:var(--muted)}
+#rchart .grid{stroke:var(--line);stroke-width:1}
+#rchart .ln{fill:none;stroke-width:1.4;stroke-linejoin:round;stroke-linecap:round;opacity:.75}
+#rchart .lb{font-family:var(--f-tick);font-stretch:82%;font-size:11.5px;font-weight:700;fill:var(--ink2);cursor:pointer}
+#rchart.has-sel .ln{opacity:.22}
+#rchart.has-sel .lb{opacity:.45}
+#rchart .ln.on{opacity:1;stroke-width:3.2;stroke:var(--ink)}
+#rchart .lb.on{opacity:1;fill:var(--ink)}
+#rchart .xh{stroke:var(--ink2);stroke-width:1;stroke-dasharray:3 3}
+#rchart .dot{fill:var(--ink);stroke:var(--panel);stroke-width:2}
+.rinfo{margin-top:10px}
+.rinfo h3{margin:0 0 6px;font-size:12.5px;font-weight:700;color:var(--ink2)}
+.rinfo h3 span{font-weight:400;color:var(--muted);margin-left:6px}
+.rsel{font-size:13px;margin:0 0 8px;color:var(--ink2)}
+.rsel b{font-family:var(--f-tick);font-stretch:82%;font-size:17px;color:var(--ink)}
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:4px}
+.rchip{appearance:none;border:1px solid var(--line);background:var(--panel);color:inherit;font:inherit;display:flex;align-items:baseline;gap:6px;padding:6px 8px;border-radius:6px;cursor:pointer;text-align:left}
+.rchip:hover{background:var(--chip)}
+.rchip[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.rchip .r{font-family:var(--f-tick);font-stretch:82%;font-size:13px;color:var(--muted);min-width:22px;text-align:right}
+.rchip .t{font-family:var(--f-tick);font-stretch:82%;font-size:15px;font-weight:700}
+.rchip .d{margin-left:auto;font-family:var(--f-tick);font-stretch:82%;font-size:11.5px}
+.empty{padding:60px 16px;text-align:center;color:var(--muted);font-size:13px}
+
+#tip{position:fixed;z-index:40;pointer-events:none;background:var(--panel);color:var(--ink);border:1px solid var(--line);box-shadow:0 6px 20px var(--shade);border-radius:8px;padding:8px 10px;font-size:12px;max-width:240px}
+#tip b{font-family:var(--f-tick);font-size:17px}
+#detail{position:fixed;z-index:50;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -10px 30px var(--shade);border-radius:14px 14px 0 0;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.dhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.dtk{font-family:var(--f-tick);font-weight:700;font-size:34px;line-height:1}
+.dname{font-size:14px;margin-top:4px}
+.dmeta{font-size:12px;color:var(--muted);margin-top:2px}
+.x{appearance:none;border:1px solid var(--line);background:var(--chip);color:var(--ink);font:500 13px/1 var(--f-body);padding:9px 13px;border-radius:999px;cursor:pointer}
+.dfacts{display:flex;gap:18px;margin-top:10px;font-size:12px;color:var(--ink2);flex-wrap:wrap}
+.dfacts b{font-family:var(--f-tick);font-size:17px;color:var(--ink);margin-left:4px}
+.dfacts small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.csum{font-size:12px;color:var(--muted);margin:-2px 0 8px}
+.csum b{font-family:var(--f-tick);font-size:14px;font-stretch:82%}
+.pgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin-top:12px}
+@media (min-width:560px) and (max-width:899px){.pgrid{grid-template-columns:repeat(7,minmax(0,1fr))}}
+.pc{border-radius:6px;padding:7px 2px;text-align:center}
+.pc .l{font-size:10.5px;opacity:.9}
+.pc .n{font-family:var(--f-tick);font-weight:700;font-size:17px;font-variant-numeric:tabular-nums}
+.pc.cur{outline:2px solid var(--ink);outline-offset:-2px}
+.dlink{display:inline-block;margin-top:12px;font-size:13px;color:var(--accent)}
+.foot{margin-top:18px;font-size:11.5px;color:var(--muted);line-height:1.7}
+.foot a{color:var(--accent,var(--ink2))}
+.foot.lab{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:22px;padding-top:14px;border-top:1px solid var(--line)}
+.labname{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:var(--ink);letter-spacing:.06em}
+.labname img{width:36px;height:36px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 1px var(--line)}
+
+@media (min-width:900px){
+  #detail{left:auto;right:max(20px,env(safe-area-inset-right,0px));bottom:max(20px,env(safe-area-inset-bottom,0px));width:360px;border:1px solid var(--line);border-radius:12px;padding:16px}
+  .pgrid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+.price{display:flex;align-items:flex-end;gap:10px 14px;flex-wrap:wrap;margin:10px 0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.price .p{font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size:44px;line-height:1;font-variant-numeric:tabular-nums}
+.price .chg{font-family:var(--f-tick);font-stretch:82%;font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
+.pside{display:flex;flex-direction:column;gap:2px}
+.dhl{display:flex;gap:12px;font-size:12px;color:var(--muted)}
+.dhl b{font-family:var(--f-tick);font-stretch:82%;font-size:15px;color:var(--ink);font-weight:700;margin-left:3px}
+.price .meta{font-size:12px;color:var(--muted);width:100%}
+@media (max-width:760px){
+  .summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cols{grid-template-columns:minmax(0,1fr)}
+  h1{font-size:23px}
+  .row{grid-template-columns:24px 54px minmax(0,1fr) 64px}
+  .row .bc{display:none}
+}
+@media (max-width:420px){
+  .contrib{grid-template-columns:minmax(0,1fr)}
+  .stat .val{font-size:25px}
+  .seg button{padding:8px 9px;font-size:12.5px}
+}
+@media (prefers-reduced-motion:reduce){.tile{transition:none}}
+
+.h2t{font-style:normal}
+.langseg{display:flex;background:var(--chip,#17171b);border:1px solid var(--line);border-radius:8px;padding:2px;gap:2px;flex:none}.langseg button{appearance:none;border:0;background:transparent;color:var(--muted);font:700 12px/1 inherit;letter-spacing:.04em;padding:7px 9px;border-radius:6px;cursor:pointer}.langseg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.9),0 1px 2px rgba(0,0,0,.4)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar">
+    <div class="titlerow">
+      <div class="brand">
+        <img class="avatar" src="icons/app-ndx.png" alt="" width="42" height="42">
+        <div style="min-width:0">
+          <h1>Nasdaq 100</h1>
+          <div class="status" id="status" data-i18n="loading">読み込み中…</div>
+        </div>
+      </div>
+      <div class="langseg" id="lang" role="group" aria-label="Language"><button type="button" data-lang="ja">JP</button><button type="button" data-lang="en">EN</button></div>
+    </div>
+    <div class="controls">
+      <!-- first row: this app, and the institute's アプリ and 書籍 (added by suite.js); the views below are the second row -->
+      <div class="seg" id="tabs" role="group"><button type="button" data-go="chart" data-i18n="tabChart">チャート</button><button type="button" data-go="dist" data-i18n="tabDist">分布</button><button type="button" data-go="hold" data-i18n="tabHold">リターン</button><button type="button" data-tab="ndx" aria-pressed="true">NDX</button></div>
+      <div class="seg" id="views" role="group" aria-label="表示">
+        <button type="button" data-v="chart" data-i18n="vChart">チャート</button>
+        <button type="button" data-v="list" data-i18n="vList">騰落率</button>
+        <button type="button" data-v="weight" data-i18n="vWeight">構成銘柄比率</button>
+      </div>
+      <!-- under the tabs and fixed with them: the period applies to everything below, the index's change included -->
+      <div class="seg" id="periods" role="group" aria-label="期間"></div>
+    </div>
+  </div>
+
+  <div id="app" hidden>
+    <div class="price" id="price" hidden></div>
+    <section class="mapbox">
+      <div class="maphead">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="hint" id="hint"></span>
+        </div>
+        <div class="legend"><span class="num" id="lgL"></span><span class="ramp" id="ramp"></span><span class="num" id="lgR"></span></div>
+      </div>
+      <div id="map" role="img" aria-label="Nasdaq 100 heatmap"></div>
+      <!-- returns view: breadth with top/bottom 3, sectors, contributions, then the ranked rows -->
+      <!-- one panel: breadth with top/bottom 3, then the sectors -->
+      <section class="panel lpanel lgroup" id="lgroup" hidden>
+        <div id="ltop"></div>
+        <div class="lsecs">
+          <h2 style="align-items:center"><i class="h2t" data-i18n="secTitle">セクター</i><span class="seg sm" id="secseg" role="group"><button type="button" data-secall data-i18n="secAll">全体</button><button type="button" data-secpick data-i18n="secSub">タップで絞り込み</button></span></h2>
+          <div id="sectors"></div>
+        </div>
+      </section>
+      <section class="panel lpanel" id="conp" hidden>
+        <h2><i class="h2t" data-i18n="contribTitle">指数への寄与</i> <span data-i18n="contribSub">期初ウェイト×騰落率（%pt）</span></h2>
+        <div class="csum" id="csum"></div>
+        <div class="contrib" id="contrib"></div>
+      </section>
+      <div id="list" hidden></div>
+      <div id="weights" hidden>
+        <div class="wtitle"><b data-i18n="wTitle">ナスダック100 指数構成銘柄比率</b><span id="wasof"></span></div>
+        <div class="wtop">
+          <div class="wstats" id="wstats"></div>
+          <div class="seg" id="wscope" role="group" aria-label="表示する銘柄">
+            <button type="button" data-w="20" data-i18n="top20">トップ20</button>
+            <button type="button" data-w="all" data-i18n="allStocks">全銘柄</button>
+          </div>
+        </div>
+        <div id="wlist"></div>
+      </div>
+      <div id="ranks" hidden>
+        <div class="rtop">
+          <div class="rtitle" data-i18n="rTitle">時価総額の順位推移（月末）</div>
+          <div class="seg" id="rrange" role="group" aria-label="期間">
+            <button type="button" data-rr="10" data-i18n="y10">10年</button>
+            <button type="button" data-rr="5" data-i18n="y5">5年</button>
+            <button type="button" data-rr="3" data-i18n="y3">3年</button>
+          </div>
+        </div>
+        <div class="rkey" id="rkey"></div>
+        <div id="rchart"></div>
+        <div class="rinfo" id="rinfo"></div>
+      </div>
+    </section>
+    <section class="panel ibox" id="ibox" hidden>
+      <h2><i class="h2t" data-i18n="idxTitle">ナスダック100指数</i> <span data-i18n="candles">ローソク足</span></h2>
+      <div class="ctlrow">
+        <div class="seg" id="itf" role="group" aria-label="足">
+          <button type="button" data-itf="d" data-i18n="tfD">日足</button>
+          <button type="button" data-itf="w" data-i18n="tfW">週足</button>
+          <button type="button" data-itf="m" data-i18n="tfM">月足</button>
+        </div>
+        <div class="seg" id="isc" role="group" aria-label="目盛り">
+          <button type="button" data-isc="lin" data-i18n="scLin">通常</button>
+          <button type="button" data-isc="log" data-i18n="scLog">対数</button>
+        </div>
+      </div>
+      <div class="ctlrow"><div class="seg sm" id="irange" role="group" aria-label="期間"></div></div>
+      <div class="readout" id="iread"></div>
+      <div class="ichart" id="ichart"></div>
+    </section>
+    <!-- related books: shown on the tabs whose content a book draws on -->
+    <section class="panel books" id="bk-env" data-books="vix:14" hidden></section>
+    <section class="panel books" id="bk-ret" data-books="anomaly:17:18" hidden></section>
+    <div class="foot lab"><span class="labname"><img src="icons/avatar.jpg" alt="" width="36" height="36"><span data-i18n="lab">恐怖指数研究所</span></span><a href="https://limelightle-debug.github.io/tqqq/" data-i18n="openTqqq">TQQQ を開く</a></div>
+  </div>
+  <div class="empty" id="empty" data-i18n="loadingData">データを読み込んでいます…</div>
+</div>
+
+<div id="tip" hidden></div>
+<aside id="detail" hidden aria-live="polite"></aside>
+
+<script src="d3.min.js"></script>
+<script src="books.js"></script>
+<script>
+/* ---------- language (日本語 / English) ---------- */
+let LANG=(()=>{try{const v=localStorage.getItem("lang");if(v==="ja"||v==="en")return v}catch(e){}return /^ja/i.test(navigator.language||"")?"ja":"en"})();
+const MONS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const I18N={
+ ja:{tabChart:"チャート",tabDist:"分布",tabHold:"リターン",loading:"読み込み中…",loadingData:"データを読み込んでいます…",vMap:"ヒートマップ",vList:"騰落率",vWeight:"構成銘柄比率",vChart:"チャート",lTitle:"騰落率ランキング",lTop3:"上位3社",lBot3:"下位3社",lPeriod:p=>`期間：${p}`,back:"← 全体に戻る",wTitle:"ナスダック100 指数構成銘柄比率",top20:"トップ20",allStocks:"全銘柄",rTitle:"時価総額の順位推移（月末）",y10:"10年",y5:"5年",y3:"3年",
+  tfD:"日足",tfW:"週足",tfM:"月足",scLin:"通常",scLog:"対数",idxTitle:"ナスダック100指数",candles:"ローソク足",contribTitle:"指数への寄与",contribSub:"期初ウェイト×騰落率（%pt）",secTitle:"セクター",secSub:"タップで絞り込み",secAll:"全体",lordUp:"値上がり順",lordDn:"値下がり順",lab:"恐怖指数研究所",openTqqq:"TQQQ を開く",switchTo:"EN",
+  d1:"1日",w1:"1週",w4:"1ヶ月",w13:"3ヶ月",w26:"6ヶ月",ytd:"年初来",w52:"1年",r3M:"3ヶ月",r6M:"6ヶ月",r1Y:"1年",r2Y:"2年",r5Y:"5年",r10Y:"10年",rALL:"全期間",
+  cap:m=>m>=1e6?(m/1e6).toFixed(2)+"兆ドル":Math.round(m/100).toLocaleString()+"億ドル",updated:v=>`更新 ${v}`,open:"米国市場 取引中",closed:"米国市場 時間外",stale:"更新が遅れています",
+  wApprox:"時価総額ベースの概算",wUpd:(m,d)=>`更新 ${m}/${d}`,wQqq:(m,d)=>`QQQの保有比率（${m}/${d}時点）`,idxPrep:"指数のデータを準備中です",monthN:m=>m+"月",idxAria:"ナスダック100指数のローソク足チャート",cl:"終",op:"始",hi:"高",lo:"安",high:"高値",low:"安値",pHigh:"期間高値",pLow:"期間安値",baseClose:(d,v)=>`${d}終値 ${v} 比`,
+  idxName:"ナスダック100指数（現物、先物ではない）",latest:"最新値",qAt:d=>`${d}時点`,closeOf:d=>`${d}の終値`,closeW:"終値",prevClose:"前日終値",idxW:p=>`指数加重・${p}`,nStocks:n=>`${n}銘柄`,upDown:"上昇 / 下落",upFlatDown:"上昇/横ばい/下落",upRatio:v=>`上昇比率 ${v}%`,best:"最大上昇",worst:"最大下落",
+  sum:"合計",sumEq:p=>`（＝指数加重・${p}）`,none:"該当なし",push:"押し上げ",drag:"押し下げ",other:"その他",top10:"上位10社",top20s:"上位20社",rest:n=>`残り${n}社`,rankBelow:r=>`${r}位以下`,whTicker:"銘柄",whWeight:"構成比率",
+  ym:k=>{const[y,m]=k.split("-");return`${y}年${+m}月`},rLoading:"順位の履歴を読み込んでいます…",rAria:"時価総額上位20社の順位推移",up:"上昇",down:"下落",flat:"横ばい",rKeyNote:n=>`${n}年前（上場時）と比べて3位以上の変化`,
+  rSel:(t,ym,f,c,ym2,m)=>`<b>${t}</b>　${ym} ${f}位 → 現在 ${c}位${m!=null?`（${ym2}は${m}位）`:""}`,rankOf:ym=>`${ym}の順位`,newest:"最新",monthEnd:"月末",rNote:"↑↓は、その月から現在までの順位の変化です。",
+  close:"閉じる",mcap:"時価総額",idxWeight:"指数ウェイト",contribP:p=>`寄与（${p}）`,startW:"期初ウェイト",finviz:t=>`Nasdaq.comで${t}を開く ↗`,showing:s=>`${s}を表示中`,
+  hintMap:"面積＝指数ウェイト、色＝騰落率。タップで詳細",hintList:p=>`${p}の騰落率順。タップで詳細`,hintWeight:n=>`指数ウェイト：${n}。タップで詳細`,loadFail:"データを読み込めませんでした。通信状況を確認して、しばらくしてから開き直してください。",loadFailShort:"読み込みに失敗しました"},
+ en:{tabChart:"Chart",tabDist:"Distribution",tabHold:"Returns",loading:"Loading…",loadingData:"Loading data…",vMap:"Heatmap",vList:"Returns",vWeight:"Index weights",vChart:"Chart",lTitle:"Return ranking",lTop3:"Top 3",lBot3:"Bottom 3",lPeriod:p=>`Period: ${p}`,back:"← Back to all",wTitle:"Nasdaq 100 index weights",top20:"Top 20",allStocks:"All",rTitle:"Market-cap rank history (month-end)",y10:"10Y",y5:"5Y",y3:"3Y",
+  tfD:"Daily",tfW:"Weekly",tfM:"Monthly",scLin:"Linear",scLog:"Log",idxTitle:"Nasdaq 100 index",candles:"Candles",contribTitle:"Contribution to the index",contribSub:"Start weight × return (pt)",secTitle:"Sectors",secSub:"Tap to filter",secAll:"All",lordUp:"Best first",lordDn:"Worst first",lab:"Fear Index Research Institute",openTqqq:"Open TQQQ",switchTo:"日本語",
+  d1:"1D",w1:"1W",w4:"1M",w13:"3M",w26:"6M",ytd:"YTD",w52:"1Y",r3M:"3M",r6M:"6M",r1Y:"1Y",r2Y:"2Y",r5Y:"5Y",r10Y:"10Y",rALL:"All",
+  cap:m=>m>=1e6?"$"+(m/1e6).toFixed(2)+"T":"$"+(m/1e3).toFixed(m>=1e5?0:1)+"B",updated:v=>`Updated ${v}`,open:"US market open",closed:"US market closed",stale:"Update delayed",
+  wApprox:"estimated from market caps",wUpd:(m,d)=>`Updated ${m}/${d}`,wQqq:(m,d)=>`QQQ holdings as of ${m}/${d}`,idxPrep:"Index data is being prepared",monthN:m=>MONS[m-1],idxAria:"Nasdaq 100 index candlestick chart",cl:"C",op:"O",hi:"H",lo:"L",high:"High",low:"Low",pHigh:"Period high",pLow:"Period low",baseClose:(d,v)=>`vs ${d} close ${v}`,
+  idxName:"Nasdaq 100 index (cash, not futures)",latest:"Latest",qAt:d=>`as of ${d}`,closeOf:d=>`${d} close`,closeW:"Close",prevClose:"Prev. close",idxW:p=>`Index-weighted · ${p}`,nStocks:n=>`${n} stocks`,upDown:"Up / Down",upFlatDown:"Up/Flat/Down",upRatio:v=>`${v}% up`,best:"Top gainer",worst:"Top loser",
+  sum:"Total",sumEq:p=>` (= index-weighted · ${p})`,none:"None",push:"Lifted",drag:"Dragged",other:"Other",top10:"Top 10",top20s:"Top 20",rest:n=>`Other ${n}`,rankBelow:r=>`#${r} and below`,whTicker:"Stock",whWeight:"Weight",
+  ym:k=>{const[y,m]=k.split("-");return`${MONS[m-1]} ${y}`},rLoading:"Loading rank history…",rAria:"Rank history of the top 20 by market cap",up:"Up",down:"Down",flat:"Flat",rKeyNote:n=>`3+ places changed vs ${n} years ago (or listing)`,
+  rSel:(t,ym,f,c,ym2,m)=>`<b>${t}</b>　#${f} in ${ym} → #${c} now${m!=null?` (#${m} in ${ym2})`:""}`,rankOf:ym=>`Ranks, ${ym}`,newest:"latest",monthEnd:"month-end",rNote:"↑↓ show the change in rank from that month to now.",
+  close:"Close",mcap:"Market cap",idxWeight:"Index weight",contribP:p=>`Contribution (${p})`,startW:"Start weight",finviz:t=>`Open ${t} on Nasdaq.com ↗`,showing:s=>`Showing ${s}`,
+  hintMap:"Area = index weight, colour = return. Tap for details",hintList:p=>`Sorted by ${p} return. Tap for details`,hintWeight:n=>`Index weight: ${n}. Tap for details`,loadFail:"Could not load the data. Check the connection and reopen in a while.",loadFailShort:"Loading failed"}};
+const tr=(k,...a)=>{const v=I18N[LANG][k]??I18N.ja[k];return typeof v==="function"?v(...a):v};
+// times: Japanese in Japan time; English in New York time (the market's), marked ET
+const fmtTime=(d,o)=>LANG==="ja"?new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",...o}).format(d):new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",hourCycle:"h23",...o}).format(d)+" ET";
+function applyLang(){
+  document.documentElement.lang=LANG;
+  document.querySelectorAll("[data-i18n]").forEach(e=>{e.innerHTML=tr(e.dataset.i18n)});
+  document.querySelectorAll("#lang [data-lang]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lang===LANG));
+}
+const PERIODS=[["d1","d1"],["w1","w1"],["w4","w4"],["w13","w13"],["w26","w26"],["ytd","ytd"],["w52","w52"]];
+const PLABEL=new Proxy({},{get:(o,k)=>PERIODS.some(p=>p[0]===k)?tr(k):undefined});
+const CLAMP={d1:3,w1:8,w4:12,w13:20,w26:30,ytd:50,w52:60};
+const SEC_JA={"Technology":"テクノロジー","Consumer Defensive":"生活必需品","Consumer Cyclical":"一般消費財","Communication Services":"通信サービス","Healthcare":"ヘルスケア","Industrials":"資本財","Basic Materials":"素材","Financial":"金融","Energy":"エネルギー","Utilities":"公益","Real Estate":"不動産"};
+const secJa=s=>LANG==="ja"?SEC_JA[s]||s:s;
+const IND_JA={"Semiconductors":"半導体","Semiconductor Equipment & Materials":"半導体装置","Software - Infrastructure":"ソフトウェア基盤","Software - Application":"アプリソフト","Consumer Electronics":"家電・端末","Communication Equipment":"通信機器","Computer Hardware":"PC・記憶装置","Electronic Components":"電子部品","Information Technology Services":"ITサービス","Scientific & Technical Instruments":"計測機器","Internet Content & Information":"インターネット","Entertainment":"エンタメ","Telecom Services":"通信","Advertising Agencies":"広告","Electronic Gaming & Multimedia":"ゲーム","Internet Retail":"ネット小売","Auto Manufacturers":"自動車","Travel Services":"旅行","Restaurants":"外食","Lodging":"ホテル","Apparel Retail":"衣料小売","Auto Parts":"自動車部品","Specialty Retail":"専門小売","Home Improvement Retail":"住宅関連小売","Aerospace & Defense":"航空宇宙・防衛","Specialty Business Services":"ビジネスサービス","Railroads":"鉄道","Conglomerates":"複合企業","Industrial Distribution":"産業流通","Farm & Heavy Construction Machinery":"重機","Trucking":"陸運","Engineering & Construction":"建設","Staffing & Employment Services":"人材","Integrated Freight & Logistics":"物流","Discount Stores":"ディスカウント","Beverages - Non-Alcoholic":"飲料","Confectioners":"菓子","Packaged Foods":"加工食品","Drug Manufacturers - General":"製薬","Biotechnology":"バイオ","Medical Instruments & Supplies":"医療機器","Medical Devices":"医療機器","Diagnostics & Research":"診断・研究","Healthcare Plans":"医療保険","Specialty Chemicals":"化学","Utilities - Regulated Electric":"電力","Utilities - Independent Power Producers":"独立系発電","Oil & Gas E&P":"石油・ガス開発","Oil & Gas Equipment & Services":"石油サービス","Credit Services":"決済・与信","Capital Markets":"証券","Insurance Brokers":"保険仲介","Financial Data & Stock Exchanges":"金融データ・取引所","Asset Management":"資産運用"};
+const indJa=s=>LANG==="ja"?IND_JA[s]||SEC_JA[s]||s:s;
+// the picked sector, narrowed further to one industry when one is picked under it
+const picked=s=>(!state.zoom||s.sec===state.zoom)&&(!state.ind||s.ind===state.ind);
+
+let DATA=null, STOCKS=[], BY={}, CAPTOTAL=0, SECTORS=[], SWC={};
+const store={get(k,d){try{const v=localStorage.getItem("ndxhm."+k);return v==null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem("ndxhm."+k,v)}catch(e){}}};
+const state={period:store.get("period","d1"),view:store.get("view","list"),wscope:store.get("wscope","20"),lorder:store.get("lorder","up"),rrange:store.get("rrange","10"),rsel:null,rmonth:null,zoom:null,ind:null,sel:null,
+  itf:store.get("itf","d"),isc:store.get("isc","lin"),irange:{d:store.get("ir_d","6M"),w:store.get("ir_w","2Y"),m:store.get("ir_m","ALL")},ici:null};
+if(state.view==="rank")state.view="weight";  // the rank chart now lives in the weight view
+if(!["list","weight","chart"].includes(state.view))state.view="list";
+if(!["10","5","3"].includes(state.rrange))state.rrange="10";
+let RH=null;
+if(!PLABEL[state.period])state.period="d1";
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const val=(t,p=state.period)=>{const v=DATA&&DATA.perf[p]&&DATA.perf[p][t];return typeof v==="number"?v:null};
+function fmt(v,d){if(v==null)return"—";const a=Math.abs(v);const dd=d!=null?d:(a>=100?0:a>=10?1:2);return(v>0?"+":v<0?"−":"±")+a.toFixed(dd)+"%"}
+function fmtCap(m){return tr("cap",m)}
+
+function setData(d){
+  DATA=d;
+  STOCKS=d.stocks.filter(s=>s&&s.t&&s.cap>0);
+  BY=Object.fromEntries(STOCKS.map(s=>[s.t,s]));
+  CAPTOTAL=STOCKS.reduce((a,s)=>a+s.cap,0);
+  // Index weight in % (s.w): QQQ holdings when available, market-cap share otherwise; normalised to 100.
+  const W=d.weights&&d.weights.w;
+  STOCKS.forEach(s=>{s.w=(W&&typeof W[s.t]==="number")?W[s.t]:s.cap/CAPTOTAL*100});
+  // Weights are as of the previous close; carry them through today's move so they match the prices shown.
+  if(W&&d.weights.asOf&&d.weights.asOf<tradeDate(d.updatedAt)){STOCKS.forEach(s=>{const r=d.perf.d1&&d.perf.d1[s.t];if(typeof r==="number")s.w*=1+r/100})}
+  const wsum=STOCKS.reduce((a,s)=>a+s.w,0)||1;STOCKS.forEach(s=>{s.w=s.w/wsum*100});
+  SWC={};
+  const caps={};STOCKS.forEach(s=>{caps[s.sec]=(caps[s.sec]||0)+s.w});
+  SECTORS=Object.keys(caps).sort((a,b)=>caps[b]-caps[a]);
+  if(state.sel&&!BY[state.sel])state.sel=null;
+  if(state.zoom&&!SECTORS.includes(state.zoom))state.zoom=null;
+  if(state.ind&&!STOCKS.some(x=>x.sec===state.zoom&&x.ind===state.ind))state.ind=null;
+}
+
+/* market status */
+// The US trading day the data belongs to (New York date; before the open counts as the previous weekday).
+function tradeDate(iso){
+  let t=new Date(iso).getTime();
+  const fmt=x=>new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(x));
+  const p=nyParts(new Date(t));
+  if(p.min<570)t-=864e5;
+  for(let i=0;i<4;i++){const wd=nyParts(new Date(t)).wd;if(wd!=="Sat"&&wd!=="Sun")break;t-=864e5}
+  return fmt(t);
+}
+function nyParts(date){const f=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",weekday:"short",hour:"numeric",minute:"numeric",hour12:false}).formatToParts(date);const o={};f.forEach(p=>o[p.type]=p.value);return{wd:o.weekday,min:(+o.hour%24)*60+(+o.minute)}}
+function marketOpen(date=new Date()){const p=nyParts(date);return !["Sat","Sun"].includes(p.wd)&&p.min>=570&&p.min<960}
+function renderStatus(){
+  if(!DATA){return}
+  const d=new Date(DATA.updatedAt);
+  const tm=fmtTime(d,{month:"numeric",day:"numeric",weekday:"short",hour:"2-digit",minute:"2-digit"});
+  const open=marketOpen();
+  const ageMin=(Date.now()-d.getTime())/6e4;
+  const stale=open?ageMin>45:ageMin>4*1440;
+  $("status").innerHTML=`<span>${esc(tr("updated",tm))}</span><span class="pill ${open?"open":""}"><i></i>${open?tr("open"):tr("closed")}</span>${stale?`<span class="pill warn">${tr("stale")}</span>`:""}`;
+}
+
+let C={};
+function readColors(){
+  const cs=getComputedStyle(document.documentElement);
+  const g=n=>cs.getPropertyValue(n).trim();
+  C={up:g("--up"),down:g("--down"),mid:g("--mid"),na:g("--na"),flat:g("--muted")};
+  document.documentElement.style.setProperty("--upc",C.up);
+  document.documentElement.style.setProperty("--downc",C.down);
+}
+function colorAt(v,p){
+  if(v==null)return C.na;
+  const t=Math.max(-1,Math.min(1,v/CLAMP[p]));
+  return d3.interpolateLab(C.mid,t>=0?C.up:C.down)(Math.pow(Math.abs(t),.75));
+}
+const color=v=>colorAt(v,state.period);
+function inkOn(bg){const c=d3.rgb(bg);const L=x=>{x/=255;return x<=.03928?x/12.92:Math.pow((x+.055)/1.055,2.4)};const l=.2126*L(c.r)+.7152*L(c.g)+.0722*L(c.b);return l>.36?"#121417":"#ffffff"}
+// Weight at the start of period p, backed out from the current weight: w_start ∝ w_now / (1 + return).
+// Every return and contribution uses it, so the contributions add up exactly to the index return.
+function startW(p=state.period){
+  if(SWC[p])return SWC[p];
+  const m={};let tot=0;
+  STOCKS.forEach(s=>{const v=val(s.t,p);if(v!=null&&v>-100){m[s.t]=s.w/(1+v/100);tot+=m[s.t]}});
+  Object.keys(m).forEach(t=>m[t]=m[t]/(tot||1)*100);
+  return SWC[p]=m;
+}
+const contrib=(t,p=state.period)=>{const w=startW(p)[t],v=val(t,p);return w==null||v==null?null:w/100*v};
+function wret(list,p=state.period){const m=startW(p);let s=0,w=0;list.forEach(x=>{const v=val(x.t,p);if(v!=null&&m[x.t]!=null){s+=m[x.t]*v;w+=m[x.t]}});return w?s/w:null}
+function weightNote(){const w=DATA&&DATA.weights;if(!w||!w.asOf)return tr("wApprox");const [y,m,dd]=w.asOf.split("-");return tr("wQqq",+m,+dd)}
+const cls=v=>v>0?"pos":v<0?"neg":"";
+
+function renderControls(){
+  $("periods").innerHTML=PERIODS.map(([k,l])=>`<button type="button" data-p="${k}" aria-pressed="${k===state.period}">${tr(l)}</button>`).join("");
+  document.querySelectorAll("#views button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===state.view));
+  document.querySelectorAll("#wscope button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.w===state.wscope));
+  document.querySelectorAll("#rrange button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.rr===state.rrange));
+}
+/* ---------- index candle chart (map view) ---------- */
+let IDX=null;   // {daily:[[yyyymmdd,o,h,l,c],...], today:[...]}
+const IRANGES={d:[["3M","r3M",63],["6M","r6M",126],["1Y","r1Y",252],["2Y","r2Y",504]],w:[["1Y","r1Y",52],["2Y","r2Y",104],["5Y","r5Y",260],["ALL","rALL",0]],m:[["5Y","r5Y",60],["10Y","r10Y",120],["ALL","rALL",0]]};
+function idxDays(){
+  if(!IDX||!Array.isArray(IDX.daily))return[];
+  const rows=[...IDX.daily];const t=IDX.today, q=DATA&&DATA.index;
+  if(t&&(!rows.length||t[0]>rows[rows.length-1][0]))rows.push(t);
+  return rows.map(([n,o,h,l,c])=>{const s=String(n);return{n,d:`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`,t:Date.UTC(+s.slice(0,4),+s.slice(4,6)-1,+s.slice(6,8)),o,h,l,c}});
+}
+function idxBars(tf){
+  const D=idxDays();if(tf==="d")return D;
+  const out=[];let cur=null,key=null;
+  D.forEach(x=>{
+    let k;if(tf==="m")k=x.d.slice(0,7);else{const wd=(new Date(x.t).getUTCDay()+6)%7;k=new Date(x.t-wd*864e5).toISOString().slice(0,10)}
+    if(k!==key){cur={...x,last:x.d};out.push(cur);key=k}else{cur.h=Math.max(cur.h,x.h);cur.l=Math.min(cur.l,x.l);cur.c=x.c;cur.last=x.d}
+  });
+  return out;
+}
+function idxLogTicks([a,b]){
+  for(const st of [[1,2,5],[1,1.5,2,3,5,7],[1,1.2,1.5,2,2.5,3,4,5,6,8]]){
+    const out=[];for(let e=Math.floor(Math.log10(a));e<=Math.ceil(Math.log10(b));e++)st.forEach(m=>{const v=+(m*10**e).toPrecision(3);if(v>=a&&v<=b)out.push(v)});
+    if(out.length>=4)return out.slice(0,9);
+  }
+  return d3.scaleLinear().domain([a,b]).ticks(5);
+}
+function renderIdx(){
+  const box=$("ibox"), el=$("ichart");
+  box.hidden=state.view!=="chart";  // the candle chart has a tab of its own
+  document.querySelectorAll("#itf button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.itf===state.itf));
+  document.querySelectorAll("#isc button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.isc===state.isc));
+  $("irange").innerHTML=IRANGES[state.itf].map(([k,l])=>`<button type="button" data-ir="${k}" aria-pressed="${k===state.irange[state.itf]}">${tr(l)}</button>`).join("");
+  if(box.hidden)return;
+  const all=idxBars(state.itf), r=IRANGES[state.itf].find(x=>x[0]===state.irange[state.itf])||IRANGES[state.itf][0];
+  const B=r[2]?all.slice(-r[2]):all;
+  if(!B.length){el.innerHTML=`<div class="empty" style="padding:30px 10px">${tr("idxPrep")}</div>`;$("iread").innerHTML="";el._geo=null;return}
+  const W=Math.max(300,el.clientWidth), narrow=W<560, H=narrow?Math.round(W*.8):380;
+  const ML=6,MR=54,MT=8,MB=22, PW=W-ML-MR, PH=H-MT-MB, n=B.length, band=PW/n, bw=Math.max(1,Math.min(14,band*.7)), x=i=>ML+band*(i+.5);
+  const lo=d3.min(B,b=>b.l), hi=d3.max(B,b=>b.h), log=state.isc==="log";
+  const y=(log?d3.scaleLog():d3.scaleLinear()).domain(log?[lo*.97,hi*1.03]:[lo-(hi-lo)*.05,hi+(hi-lo)*.05]).range([MT+PH,MT]);
+  if(!log)y.nice();
+  const tk=v=>Math.round(v).toLocaleString("en-US");
+  let g="";(log?idxLogTicks(y.domain()):y.ticks(5)).forEach(v=>{g+=`<line class="grid" x1="${ML}" x2="${ML+PW}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${ML+PW+6}" y="${y(v)+4}">${tk(v)}</text>`});
+  let lastLab="";const span=(B[n-1].t-B[0].t)/864e5;
+  B.forEach((b,i)=>{const lab=span>800?b.d.slice(0,4):b.d.slice(0,7);if(lab!==lastLab){const show=span>800?(+lab%(span>3000?2:1)===0):(+b.d.slice(5,7)%(span>300?3:1)===0);if(show&&i>0)g+=`<line class="grid" x1="${x(i)}" x2="${x(i)}" y1="${MT}" y2="${MT+PH}" opacity=".5"/><text class="ax" x="${x(i)}" y="${H-6}" text-anchor="middle">${span>800?"’"+lab.slice(2):(+lab.slice(5)===1?lab.slice(2,4)+"/1":tr("monthN",+lab.slice(5)))}</text>`}lastLab=lab});
+  let c="";B.forEach((b,i)=>{const col=b.c>=b.o?C.up:C.down, xc=x(i).toFixed(1);
+    c+=`<line x1="${xc}" x2="${xc}" y1="${y(b.h).toFixed(1)}" y2="${y(b.l).toFixed(1)}" stroke="${col}" stroke-width="1"/>`;
+    const y1=y(Math.max(b.o,b.c)),y2=y(Math.min(b.o,b.c));c+=`<rect x="${(x(i)-bw/2).toFixed(1)}" y="${y1.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1,y2-y1).toFixed(1)}" fill="${col}"/>`});
+  const ci=state.ici!=null&&state.ici<n?state.ici:null;
+  const xh=ci!=null?`<line class="xh" x1="${x(ci)}" x2="${x(ci)}" y1="${MT}" y2="${MT+PH}"/>`:"";
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${tr("idxAria")}">${g}${c}${xh}<rect class="ihit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
+  el._geo={ML,PW,n};
+  const b=B[ci!=null?ci:n-1], f=v=>v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const lbl=state.itf==="d"?b.d:state.itf==="w"?`${b.d}〜${b.last.slice(5)}`:b.d.slice(0,7);
+  // always two rows, so the chart below never shifts
+  $("iread").innerHTML=`<div class="rrow"><b>${lbl}</b><span>${tr("cl")} <b>${f(b.c)}</b></span></div><div class="rrow"><span>${tr("op")} ${f(b.o)}</span><span>${tr("hi")} ${f(b.h)}</span><span>${tr("lo")} ${f(b.l)}</span></div>`;
+}
+// the Nasdaq-100 index level, like the price at the top of the TQQQ app
+// the close a period's change is measured from (the last close on or before the period's start), and the bars after it
+function idxBase(p){
+  const D=idxDays();if(p==="d1"||D.length<2)return null;
+  const z=new Date(D[D.length-1].t),y=z.getUTCFullYear(),m=z.getUTCMonth(),d=z.getUTCDate();
+  const off={w1:[0,7],w4:[1,0],w13:[3,0],w26:[6,0],w52:[12,0]}[p];
+  const target=p==="ytd"?Date.UTC(y-1,11,31):off?Date.UTC(y,m-off[0],d-off[1]):null;
+  if(target==null)return null;
+  let i=D.length-1;while(i>0&&D[i].t>target)i--;
+  return i<D.length-1?{b:D[i],after:D.slice(i+1)}:null;
+}
+function renderPrice(){
+  const q=DATA&&DATA.index, el=$("price");
+  if(!q||q.price==null){el.hidden=true;return}
+  const n=v=>v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const live=/\d:\d/.test(q.time||"");
+  // the quote's own time (finviz gives it in ET, e.g. "Nov 20, 2026 3:20 PM ET"), shown in the reader's zone
+  const qt=(()=>{const x=String(q.time||"").match(/([A-Z][a-z]{2}) (\d{1,2}), (\d{4}) (\d{1,2}):(\d\d) (AM|PM)/);if(!x)return null;
+    const mo="JanFebMarAprMayJunJulAugSepOctNovDec".indexOf(x[1])/3,h=(+x[4]%12)+(x[6]==="PM"?12:0);
+    for(const off of [4,5]){const t=new Date(Date.UTC(+x[3],mo,+x[2],h+off,+x[5]));if(nyParts(t).min===h*60+(+x[5]))return t}return null})();
+  const m=String(q.time||"").match(/([A-Z][a-z]{2}) (\d{1,2}), (\d{4})/);
+  const day=m?`${"JanFebMarAprMayJunJulAugSepOctNovDec".indexOf(m[1])/3+1}/${+m[2]}`:"";
+  // 1 day: against the previous close; longer periods: against the close before the period, high and low over it
+  const pb=idxBase(state.period),ref=pb?pb.b.c:q.prev;
+  const d=ref?q.price-ref:null, r=ref?q.price/ref-1:null;
+  const hi=pb?Math.max(...pb.after.map(x=>x.h),q.high??-Infinity):q.high, lo=pb?Math.min(...pb.after.map(x=>x.l),q.low??Infinity):q.low;
+  const hl=hi!=null&&lo!=null&&isFinite(hi)&&isFinite(lo);
+  const md=x=>`${pb&&x.d.slice(0,4)!==pb.after[pb.after.length-1].d.slice(0,4)?x.d.slice(0,4)+"/":""}${+x.d.slice(5,7)}/${+x.d.slice(8,10)}`;  // the year too when it is last year
+  el.hidden=false;
+  el.innerHTML=`<div class="p">${n(q.price)}</div><div class="pside">${d==null?"":`<div class="chg ${cls(r*100)}">${d>=0?"+":"−"}${n(Math.abs(d))}（${fmt(r*100,2)}）</div>`}${hl?`<div class="dhl"><span>${tr("pHigh")} <b>${n(hi)}</b></span><span>${tr("pLow")} <b>${n(lo)}</b></span></div>`:""}</div>
+   <div class="meta">${tr("idxName")} · ${live?tr("latest")+(qt?`（${tr("qAt",fmtTime(qt,{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}))}）`:""):day?tr("closeOf",day):tr("closeW")}${pb?` · ${tr("baseClose",md(pb.b),n(pb.b.c))}`:q.prev?` · ${tr("prevClose")} ${n(q.prev)}`:""}</div>`;
+}
+// the period's breadth for the returns view: the index-weighted return and the count of risers and fallers (two cells)
+function summaryCells(){
+  const all=STOCKS.filter(s=>val(s.t)!=null);
+  if(!all.length)return ["",""];
+  const r=wret(all);
+  const up=all.filter(s=>val(s.t)>0).length, dn=all.filter(s=>val(s.t)<0).length, fl=all.length-up-dn;  // unchanged ones counted too, so the three add up
+  return [`<div class="stat"><div class="lab">${tr("idxW",PLABEL[state.period])}</div><div class="val ${cls(r)}">${fmt(r,2)}</div><div class="sub">${tr("nStocks",all.length)}</div></div>`,
+   // one line: label, count, ratio
+   `<div class="lud"><div class="l"><span class="lab">${tr("upFlatDown")}</span><span class="val pos">${up}</span></div><div class="val"><span class="sl"> / </span>${fl}<span class="sl"> / </span></div><div class="r"><span class="val neg">${dn}</span><span class="sub">${tr("upRatio",Math.round(up/all.length*100))}</span></div></div>`];
+}
+function renderContrib(){
+  const rows=STOCKS.map(s=>({t:s.t,c:contrib(s.t)})).filter(r=>r.c!=null);
+  const sum=rows.reduce((a,r)=>a+r.c,0);
+  $("csum").innerHTML=`${tr("sum")} <b class="num ${cls(sum)}">${sum>0?"+":sum<0?"−":"±"}${Math.abs(sum).toFixed(2)}pt</b>${tr("sumEq",PLABEL[state.period])}`;
+  const pos=rows.filter(r=>r.c>0).sort((a,b)=>b.c-a.c).slice(0,5);
+  const neg=rows.filter(r=>r.c<0).sort((a,b)=>a.c-b.c).slice(0,5);
+  const mx=Math.max(...pos.map(r=>r.c),...neg.map(r=>-r.c),1e-9);
+  const col=(arr,title,c)=>`<div><h3>${title}</h3>${arr.length?arr.map(r=>`<div class="crow" data-t="${r.t}" role="button" tabindex="0"><span class="tk">${r.t}</span><span class="track"><span class="fill" style="width:${Math.max(2,Math.abs(r.c)/mx*100)}%;background:${c}"></span></span><span class="v num">${r.c>0?"+":"−"}${Math.abs(r.c).toFixed(2)}</span></div>`).join(""):`<div style="font-size:12px;color:var(--muted)">${tr("none")}</div>`}</div>`;
+  $("contrib").innerHTML=col(pos,tr("push"),C.up)+col(neg,tr("drag"),C.down);
+}
+function renderSectors(){
+  // 全体 is picked until a sector is; then the filter label is
+  document.querySelector("[data-secall]").setAttribute("aria-pressed",!state.zoom);document.querySelector("[data-secpick]").setAttribute("aria-pressed",!!state.zoom);
+  const secs=SECTORS.map(sec=>{const list=STOCKS.filter(s=>s.sec===sec);return{sec,w:list.reduce((a,s)=>a+s.w,0)/100,r:wret(list)}}).sort((a,b)=>(b.r??-1e9)-(a.r??-1e9));
+  // the industries of the picked sector share the bar scale, so theirs fit too
+  const zr=[...new Set(STOCKS.map(x=>x.sec+"|"+x.ind))].map(k=>STOCKS.filter(x=>x.sec+"|"+x.ind===k)).filter(l=>l[0].sec===state.zoom||l.reduce((a,x)=>a+x.w,0)>=2).map(l=>Math.abs(wret(l)||0));
+  const mx=Math.max(...secs.map(s=>Math.abs(s.r||0)),...zr,1e-9);
+  $("sectors").innerHTML=secs.map(s=>{
+    const pct=Math.abs(s.r||0)/mx*50;
+    const bar=s.r>=0?`left:50%;width:${pct}%;background:${C.up};border-radius:0 3px 3px 0`:`right:50%;width:${pct}%;background:${C.down};border-radius:3px 0 0 3px`;
+    let h=`<button type="button" class="secrow" data-sec="${esc(s.sec)}" aria-pressed="${state.zoom===s.sec&&!state.ind}"><span class="nm">${secJa(s.sec)}</span><span class="wt num">${(s.w*100).toFixed(1)}%</span><span class="dbar"><i style="${bar}"></i></span><span class="v num ${cls(s.r)}">${fmt(s.r,2)}</span></button>`;
+    // industries (半導体, 半導体装置, ...) sit under their sector: the ones of 2% or more of the
+    // index always, all of them once the sector is picked; tap one to narrow to it
+    {
+      const g={};STOCKS.filter(x=>x.sec===s.sec).forEach(x=>(g[x.ind]=g[x.ind]||[]).push(x));
+      const inds=Object.entries(g).map(([ind,l])=>({ind,w:l.reduce((a,x)=>a+x.w,0)/100,r:wret(l)})).filter(i=>state.zoom===s.sec||i.w>=.02).sort((a,b)=>(b.r??-1e9)-(a.r??-1e9));
+      if(Object.keys(g).length>1)h+=inds.map(i=>{const p=Math.abs(i.r||0)/mx*50;
+        const b=i.r>=0?`left:50%;width:${p}%;background:${C.up};border-radius:0 3px 3px 0`:`right:50%;width:${p}%;background:${C.down};border-radius:3px 0 0 3px`;
+        return `<button type="button" class="secrow indrow" data-ind="${esc(i.ind)}" aria-pressed="${state.ind===i.ind}"><span class="nm">${esc(indJa(i.ind))}</span><span class="wt num">${(i.w*100).toFixed(1)}%</span><span class="dbar"><i style="${b}"></i></span><span class="v num ${cls(i.r)}">${fmt(i.r,2)}</span></button>`}).join("");
+    }
+    return h}).join("");
+}
+function renderLegend(){
+  const m=CLAMP[state.period];
+  $("lgL").textContent="−"+m+"%";$("lgR").textContent="+"+m+"%";
+  $("ramp").style.background=`linear-gradient(90deg,${[-1,-.5,0,.5,1].map(x=>color(x*m)).join(",")})`;
+}
+function renderMap(){
+  const el=$("map");
+  const W=el.clientWidth; if(!W)return;
+  const narrow=W<640;
+  const H=state.zoom?(narrow?Math.round(W*1.15):Math.round(Math.min(W*.5,620))):(narrow?Math.round(W*1.55):Math.round(Math.min(W*.6,760)));
+  el.style.height=H+"px";
+  const secs=SECTORS.filter(sec=>!state.zoom||sec===state.zoom).map(sec=>{
+    const inds={};STOCKS.filter(s=>s.sec===sec&&picked(s)).forEach(s=>{(inds[s.ind]=inds[s.ind]||[]).push({t:s.t,cap:s.w})});
+    return{name:sec,children:Object.entries(inds).map(([ind,ch])=>({name:ind,children:ch}))};
+  });
+  // Areas stay true to index weight. Sectors too small to hold their own heading
+  // (energy, materials, utilities, financials, ...) share one "その他" box, so their stocks show.
+  const OTHER="__other";
+  if(!state.zoom){
+    const tot=d3.sum(STOCKS,x=>x.w), lim=tot*(narrow?.02:.01), wsec=sec=>d3.sum(sec.children,i=>d3.sum(i.children,c=>c.cap));
+    const small=secs.filter(sec=>wsec(sec)<lim);
+    if(small.length>1){secs.splice(0,secs.length,...secs.filter(sec=>!small.includes(sec)),{name:OTHER,children:small})}
+  }
+  // Headings and gaps take space out of each box, more so in small ones. Re-run the layout a few
+  // times, enlarging each box just enough that its tiles' area matches its index weight.
+  // Industries (finviz's grouping: 半導体, 半導体装置・材料, ...) get their own box, with a heading
+  // when it has room for one. Inside "その他" the second level is the sector instead.
+  const indHead=d=>d.depth===2&&d.children&&d.x1-d.x0>=46&&d.y1-d.y0>=42;
+  const tm=d3.treemap().size([W,H]).tile(d3.treemapSquarify.ratio(1.15))
+    .paddingOuter(d=>d.depth===1?2:0).paddingTop(d=>d.depth===1?20:indHead(d)?14:0).paddingInner(d=>d.depth===0?3:d.depth===1?2:1).round(true);
+  // (A box can change shape between runs, so the step is damped and the closest run is kept.)
+  const k={};let root,best=Infinity;
+  for(let it=0;it<10;it++){
+    const r=d3.hierarchy({name:"root",children:secs}).sum(d=>d.cap?d.cap*(k[d.top]||1):0).sort((a,b)=>b.value-a.value);
+    if(it===0)r.children.forEach(n=>n.leaves().forEach(l=>{l.data.top=n.data.name}));
+    tm(r);
+    const area=n=>d3.sum(n.leaves(),l=>(l.x1-l.x0)*(l.y1-l.y0)), cap=n=>d3.sum(n.leaves(),l=>l.data.cap);
+    const K=area(r)/cap(r);let worst=0;
+    r.children.forEach(n=>{const a=area(n);if(!(a>0))return;const q=a/cap(n)/K;worst=Math.max(worst,Math.abs(Math.log(q)));k[n.data.name]=(k[n.data.name]||1)/Math.sqrt(q)});
+    if(worst<best){best=worst;root=r}
+    if(worst<.02)break;
+  }
+  let html="";
+  (root.children||[]).forEach(s=>{
+    const other=s.data.name===OTHER, names=other?s.data.children.map(c=>c.name):[s.data.name];
+    const r=wret(STOCKS.filter(x=>names.includes(x.sec)));
+    html+=`<div class="sec" style="left:${s.x0}px;top:${s.y0}px;width:${s.x1-s.x0}px;height:${s.y1-s.y0}px"><div class="sh"><span>${other?tr("other"):secJa(s.data.name)}</span><b class="${cls(r)}">${fmt(r,2)}</b></div></div>`;
+  });
+  root.descendants().filter(n=>n.depth===2&&n.children).forEach(n=>{
+    const w=n.x1-n.x0, h=n.y1-n.y0, head=n.children[0].y0-n.y0>=14&&w>=46&&h>=42;
+    const tk=n.leaves().map(l=>l.data.t), r=wret(STOCKS.filter(x=>tk.includes(x.t)));
+    html+=`<div class="ind" style="left:${n.x0}px;top:${n.y0}px;width:${w}px;height:${h}px">${head?`<div class="ih"><span>${esc(indJa(n.data.name))}</span><b class="${cls(r)}">${fmt(r,2)}</b></div>`:""}</div>`;
+  });
+  root.leaves().forEach(l=>{
+    const t=l.data.t, w=l.x1-l.x0, h=l.y1-l.y0; if(!t||w<1||h<1)return;
+    const v=val(t), bg=color(v), ink=inkOn(bg);
+    // ticker size from the tile's area, narrowed to fit its width
+    const fs=Math.max(9,Math.min(32,Math.sqrt(w*h)/4.1,(w-4)/(.6*t.length)));
+    const showT=w>=fs*.6*t.length+4&&h>=fs+3;
+    const pfs=Math.max(9,fs*.62);
+    const ptxt=fmt(v);
+    const showP=showT&&h>=fs+pfs+6&&w>=pfs*.56*ptxt.length+4;
+    html+=`<button type="button" class="tile${state.sel===t?" sel":""}" data-t="${t}" style="left:${l.x0}px;top:${l.y0}px;width:${w}px;height:${h}px;background:${bg};color:${ink}" aria-label="${t} ${ptxt}">${showT?`<span class="t" style="font-size:${fs}px">${t}</span>`:""}${showP?`<span class="p" style="font-size:${pfs}px">${ptxt}</span>`:""}</button>`;
+  });
+  el.innerHTML=html;
+  // the sector name comes first; its % stays only when both fit across the box
+  el.querySelectorAll(".sec .sh,.ind .ih").forEach(h=>{const n=h.querySelector("span"),b=h.querySelector("b");if(b&&n.scrollWidth+6+b.offsetWidth>h.clientWidth-8)b.remove()});
+}
+function renderList(){
+  const list=STOCKS.filter(picked).sort((a,b)=>(val(b.t)??-1e9)-(val(a.t)??-1e9));
+  const mx=Math.max(...list.map(s=>Math.abs(val(s.t)||0)),1e-9);
+  // the top three and the bottom three at a glance
+  const okv=list.filter(s=>val(s.t)!=null),t3=okv.slice(0,3),b3=okv.slice(3).slice(-3).reverse();  // a small sector: no name twice
+  const col=(lab,arr)=>`<div><div class="lsl">${lab}</div>${[0,1,2].map(i=>{const s=arr[i];return s?`<button type="button" class="lsr" data-t="${s.t}"><b>${s.t}</b><span class="num ${cls(val(s.t))}">${fmt(val(s.t))}</span></button>`:`<div class="lsr lsr0"><b>-</b><span class="num">-</span></div>`}).join("")}</div>`;
+  // one panel: the breadth on top, the top three and the bottom three under it
+  const [,cb]=summaryCells(),six=okv.length>0;  // always three rows each (- where a sector has fewer), so the panel keeps its size
+  // (the index-weighted return is left out: the index's own change sits just above)
+  $("ltop").innerHTML=`<div class="lmerge"><div class="lc lfull">${cb}</div>${six?`<div class="lc">${col(tr("lTop3"),t3)}</div><div class="lc">${col(tr("lBot3"),b3)}</div>`:""}</div>`;
+  // the ranked rows, best first or worst first (stocks without a value stay at the end)
+  const rows=state.lorder==="dn"?[...okv].reverse().concat(list.filter(s=>val(s.t)==null)):list;
+  const ord=`<div class="seg sm lord" role="group">${["up","dn"].map(k=>`<button type="button" data-lord="${k}" aria-pressed="${state.lorder===k}">${tr(k==="up"?"lordUp":"lordDn")}</button>`).join("")}</div>`;
+  $("list").innerHTML=ord+rows.map((s,i)=>{
+    const v=val(s.t);const pct=Math.abs(v||0)/mx*50;
+    const bar=v==null?"":v>=0?`left:50%;width:${pct}%;background:${C.up};border-radius:0 3px 3px 0`:`right:50%;width:${pct}%;background:${C.down};border-radius:3px 0 0 3px`;
+    return `<button type="button" class="row" data-t="${s.t}"><span class="rk num">${i+1}</span><span class="tk">${s.t}</span><span class="nm"><div>${esc(s.name)}</div><small>${esc(indJa(s.ind))} · ${fmtCap(s.cap)}</small></span><span class="dbar bc"><i style="${bar}"></i></span><span class="v num ${cls(v)}">${fmt(v)}</span></button>`}).join("");
+}
+function renderWeights(){
+  {const w=DATA&&DATA.weights,d=w&&w.asOf&&w.asOf.split("-");$("wasof").textContent=d?tr("wUpd",+d[1],+d[2]):tr("wApprox")}
+  const all=[...STOCKS].sort((a,b)=>b.w-a.w);
+  const w=s=>s.w;
+  const top10=all.slice(0,10).reduce((a,s)=>a+w(s),0), top20=all.slice(0,20).reduce((a,s)=>a+w(s),0);
+  $("wstats").innerHTML=`<div>${tr("top10")}<b>${top10.toFixed(2)}%</b></div><div>${tr("top20s")}<b>${top20.toFixed(2)}%</b></div><div>${tr("rest",all.length-20)}<b>${(100-top20).toFixed(2)}%</b></div>`;
+  let list=all.map((s,i)=>({s,rank:i+1}));
+  if(state.zoom)list=list.filter(x=>picked(x.s));
+  else if(state.wscope==="20")list=list.slice(0,20);
+  const mx=Math.max(...list.map(x=>w(x.s)),1e-9);
+  // column heads: what each number is
+  let html=`<div class="wrow whead"><span></span><span>${tr("whTicker")}</span><span class="wh2">${tr("whWeight")}</span></div>`;
+  list.forEach((x,i)=>{
+    if(!state.zoom&&state.wscope==="all"&&(x.rank===11||x.rank===21))html+=`<div class="wsep">${tr("rankBelow",x.rank)}</div>`;
+    html+=`<button type="button" class="wrow" data-t="${x.s.t}"><span class="rk num">${x.rank}</span><span class="tk">${x.s.t}<small>${esc(x.s.name)} · ${esc(indJa(x.s.ind))}</small></span><span class="wbar"><i style="width:${Math.max(1,w(x.s)/mx*100)}%"></i></span><span class="w num">${w(x.s).toFixed(2)}%</span></button>`;
+  });
+  $("wlist").innerHTML=html;
+  $("wscope").hidden=!!state.zoom;
+}
+/* rank history */
+const nyMonth=iso=>new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York",year:"numeric",month:"2-digit"}).format(new Date(iso)).slice(0,7);
+const nextMonth=k=>{let[y,m]=k.split("-").map(Number);m++;if(m>12){m=1;y++}return`${y}-${String(m).padStart(2,"0")}`};
+const jaMonth=k=>tr("ym",k);
+// History months plus the current month, whose ranks come from the latest market caps.
+function rankSeries(){
+  if(!RH||!RH.months||!DATA)return null;
+  const months=[...RH.months];const cur=nyMonth(DATA.updatedAt);
+  while(months.length&&months[months.length-1]<cur&&months.length<RH.months.length+3)months.push(nextMonth(months[months.length-1]));
+  const ci=months.indexOf(cur);
+  const live={};[...STOCKS].sort((a,b)=>b.cap-a.cap).forEach((s,i)=>live[s.t]=i+1);
+  const top=Object.keys(live).filter(t=>live[t]<=20).sort((a,b)=>live[a]-live[b]);
+  const ser={};
+  top.forEach(t=>{const h=(RH.ranks&&RH.ranks[t])||[];const a=months.map((_,i)=>typeof h[i]==="number"?h[i]:null);if(ci>=0)a[ci]=live[t];ser[t]=a});
+  // ranks of every stock by month, for the month list
+  return{months,top,ser,cur:ci>=0?ci:months.length-1};
+}
+function renderRanks(){
+  const box=$("rchart");const R=rankSeries();
+  if(!R){box.innerHTML=`<div class="empty" style="padding:40px 10px">${tr("rLoading")}</div>`;$("rinfo").innerHTML="";$("rkey").innerHTML="";return}
+  const n=Math.min(R.months.length,+state.rrange*12+1), i0=R.months.length-n;
+  const W=Math.max(300,box.clientWidth-8), narrow=W<560;
+  const ML=24,MR=50,MT=8,MB=22, H=narrow?Math.round(Math.min(640,W*1.6)):560;
+  const PW=W-ML-MR, PH=H-MT-MB, MAXR=40;
+  const x=i=>ML+(i-i0)/(n-1)*PW, y=r=>MT+(r-1)/(MAXR-1)*PH;
+  // colour by change over the shown period: up = climbed 3+ places, down = fell 3+ places
+  const first=a=>{for(let i=i0;i<a.length;i++)if(a[i]!=null)return a[i];return null};
+  const lineCol={};
+  R.top.forEach(t=>{const a=R.ser[t],f=first(a),l=a[R.cur];const d=f==null||l==null?0:f-l;lineCol[t]=d>=3?C.up:d<=-3?C.down:C.flat});
+  let g="";
+  [1,5,10,15,20,25,30,35,40].forEach(r=>{g+=`<line class="grid" x1="${ML}" x2="${ML+PW}" y1="${y(r)}" y2="${y(r)}"/><text class="ax" x="${ML-6}" y="${y(r)+4}" text-anchor="end">${r}</text>`});
+  const step=n>80?(narrow?2:1):1;
+  R.months.forEach((k,i)=>{if(i<i0||!k.endsWith("-01"))return;const yy=+k.slice(0,4);if(step===2&&yy%2)return;g+=`<line class="grid" x1="${x(i)}" x2="${x(i)}" y1="${MT+PH}" y2="${MT+PH+4}"/><text class="ax" x="${x(i)}" y="${H-5}" text-anchor="middle">${n>40?"’"+String(yy).slice(2):yy}</text>`});
+  const path=a=>{let d="",pen=false;for(let i=i0;i<a.length;i++){const r=a[i];if(r==null){pen=false;continue}d+=(pen?"L":"M")+x(i).toFixed(1)+" "+y(Math.min(r,MAXR+4)).toFixed(1);pen=true}return d};
+  const order=[...R.top].reverse();
+  let lines="";order.forEach(t=>{if(t===state.rsel)return;lines+=`<path class="ln" d="${path(R.ser[t])}" stroke="${lineCol[t]}" data-rk="${t}"/>`});
+  if(state.rsel&&R.ser[state.rsel])lines+=`<path class="ln on" d="${path(R.ser[state.rsel])}" data-rk="${state.rsel}"/>`;
+  let labels="";R.top.forEach(t=>{const r=R.ser[t][R.cur];labels+=`<text class="lb${t===state.rsel?" on":""}" x="${ML+PW+6}" y="${y(r)+4}" data-rk="${t}">${t}</text>`});
+  const mi=state.rmonth!=null&&state.rmonth>=i0&&state.rmonth<R.months.length?state.rmonth:R.cur;
+  let xh="";if(mi!==R.cur){xh=`<line class="xh" x1="${x(mi)}" x2="${x(mi)}" y1="${MT}" y2="${MT+PH}"/>`}
+  if(state.rsel&&R.ser[state.rsel]){const r=R.ser[state.rsel][mi];if(r!=null&&r<=MAXR)xh+=`<circle class="dot" cx="${x(mi)}" cy="${y(r)}" r="4.5"/>`}
+  box.classList.toggle("has-sel",!!state.rsel);
+  box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${tr("rAria")}"><defs><clipPath id="rclip"><rect x="0" y="0" width="${W}" height="${y(MAXR+.5)}"/></clipPath></defs>${g}<g clip-path="url(#rclip)">${lines}</g>${labels}${xh}<rect id="rhit" x="${ML}" y="${MT}" width="${PW}" height="${PH}" fill="transparent"/></svg>`;
+  box._geo={i0,n,ML,PW};
+  $("rkey").innerHTML=`<span><i style="background:${C.up}"></i>${tr("up")}</span><span><i style="background:${C.down}"></i>${tr("down")}</span><span><i style="background:${C.flat}"></i>${tr("flat")}</span><span>${tr("rKeyNote",state.rrange)}</span>`;
+  renderRankInfo(R,mi,i0);
+}
+function renderRankInfo(R,mi,i0){
+  const k=R.months[mi];
+  const rows=R.top.map(t=>({t,r:R.ser[t][mi]})).sort((a,b)=>(a.r??999)-(b.r??999));
+  let sel="";
+  if(state.rsel&&R.ser[state.rsel]){const a=R.ser[state.rsel];let f=null,fi=null;for(let i=i0;i<a.length;i++)if(a[i]!=null){f=a[i];fi=i;break}
+    sel=`<p class="rsel">${tr("rSel",state.rsel,jaMonth(R.months[fi]),f,a[R.cur],jaMonth(k),a[mi]!=null&&mi!==R.cur?a[mi]:null)}</p>`}
+  $("rinfo").innerHTML=`${sel}<h3>${tr("rankOf",jaMonth(k))}<span>${mi===R.cur?tr("newest"):tr("monthEnd")}</span></h3><div class="rgrid">${rows.map(x=>{const now=R.ser[x.t][R.cur];const d=x.r==null?null:x.r-now;
+    return `<button type="button" class="rchip" data-rk="${x.t}" aria-pressed="${x.t===state.rsel}"><span class="r">${x.r==null?"—":x.r}</span><span class="t">${x.t}</span>${mi!==R.cur&&d?`<span class="d ${d>0?"pos":"neg"}">${d>0?"↑":"↓"}${Math.abs(d)}</span>`:""}</button>`}).join("")}</div>${mi!==R.cur?`<p class="wnote">${tr("rNote")}</p>`:""}`;
+}
+function rankMonthAt(clientX){
+  const box=$("rchart"),g=box._geo,svg=box.querySelector("svg");if(!g||!svg)return null;
+  const r=svg.getBoundingClientRect();const sx=(clientX-r.left)*(svg.viewBox.baseVal.width/r.width);
+  const f=(sx-g.ML)/g.PW;return Math.max(g.i0,Math.min(g.i0+g.n-1,Math.round(g.i0+f*(g.n-1))));
+}
+
+function renderDetail(){
+  const d=$("detail");
+  if(!state.sel||!BY[state.sel]){d.hidden=true;return}
+  const s=BY[state.sel];
+  const chips=PERIODS.map(([k,l])=>{const v=val(s.t,k);const bg=colorAt(v,k);return `<div class="pc${k===state.period?" cur":""}" style="background:${bg};color:${inkOn(bg)}"><div class="l">${tr(l)}</div><div class="n">${fmt(v,v!=null&&Math.abs(v)>=100?0:1)}</div></div>`}).join("");
+  const cv=contrib(s.t), sw=startW()[s.t];
+  d.innerHTML=`<div class="dhead"><div><div class="dtk">${s.t}</div><div class="dname">${esc(s.name)}</div><div class="dmeta">${secJa(s.sec)} · ${esc(indJa(s.ind))}</div></div><button type="button" class="x" id="close">${tr("close")}</button></div>
+   <div class="dfacts"><span>${tr("mcap")}<b>${fmtCap(s.cap)}</b></span><span>${tr("idxWeight")}<b>${s.w.toFixed(2)}%</b></span><span>${tr("contribP",PLABEL[state.period])}<b>${cv==null?"—":(cv>0?"+":"−")+Math.abs(cv).toFixed(2)+"pt"}</b><small>${tr("startW")} ${sw==null?"—":sw.toFixed(2)+"%"} × ${fmt(val(s.t))}</small></span></div>
+   <div class="pgrid">${chips}</div>
+   <a class="dlink" href="https://www.nasdaq.com/market-activity/stocks/${encodeURIComponent(s.t.toLowerCase())}" target="_blank" rel="noopener noreferrer">${tr("finviz",s.t)}</a>`;
+  d.hidden=false;
+  $("close").onclick=()=>{state.sel=null;renderMapOrList();renderDetail()};
+}
+function renderMapOrList(){
+  const v=state.view;
+  $("map").hidden=v!=="map";$("bk-env").hidden=!(v==="map"||v==="weight");$("bk-ret").hidden=v!=="list";$("list").hidden=v!=="list";$("weights").hidden=v!=="weight";$("ranks").hidden=v!=="weight"||!!state.zoom;
+  ["lgroup","conp"].forEach(id=>$(id).hidden=v!=="list");  // the returns view's panels
+  document.body.dataset.view=v;  // the weights view shows the weights alone (no period, price block or hint)
+  document.querySelector(".legend").style.visibility=v==="map"?"visible":"hidden";
+  $("hint").textContent=state.zoom?tr("showing",state.ind?indJa(state.ind):secJa(state.zoom)):({map:tr("hintMap"),list:tr("hintList",PLABEL[state.period]),weight:tr("hintWeight",weightNote()),chart:""})[v];
+  renderIdx();
+  if(v==="map")renderMap();else if(v==="list")renderList();else if(v==="weight"){renderWeights();if(!state.zoom)renderRanks()}
+}
+function renderAll(){
+  readColors();renderControls();
+  if(!DATA)return;
+  $("app").hidden=false;$("empty").hidden=true;
+  renderStatus();renderPrice();renderContrib();renderSectors();renderLegend();renderMapOrList();renderDetail();
+}
+
+/* data loading */
+let loading=false;
+async function loadRanks(){
+  try{const r=await fetch("data/rank_history.json",{cache:"no-cache"});if(r.ok){const j=await r.json();if(j&&j.months&&j.ranks)RH=j}}catch(e){}
+}
+// When a newer version of the app is published, reload to pick it up (the version is the
+// service worker's cache name; bump both together).
+const APP_VER="ndx-heatmap-v76";
+async function newerApp(){return false;
+  try{const t=await(await fetch("sw.js?ts="+Date.now(),{cache:"no-store"})).text();const m=t.match(/CACHE = "([^"]+)"/);
+    // at most one reload per new version, in case the page itself is still served from a cache
+    if(m&&m[1]!==APP_VER&&sessionStorage.getItem("reloadedFor")!==m[1]){sessionStorage.setItem("reloadedFor",m[1]);location.reload();return true}}catch(e){}
+  return false;
+}
+// the index's daily bars: fetched on every poll; true when they changed (or arrived for the first time)
+let idxStamp=null;
+async function loadIdx(){
+  for(let a=0;a<2;a++){
+    try{const r=await fetch("data/ndx_daily.json?ts="+Date.now(),{cache:"no-store"});
+      if(r.ok){const j=await r.json();if(j&&Array.isArray(j.daily)&&j.daily.length){const st=j.fetchedAt+"|"+JSON.stringify(j.today);const ch=st!==idxStamp;IDX=j;idxStamp=st;return ch}}}catch(e){}
+  }
+  return false;
+}
+async function load(manual){
+  if(await newerApp())return;
+  if(loading)return;loading=true;
+  try{
+    const r=await fetch("data/ndx.json?ts="+Date.now(),{cache:"no-store"});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const d=await r.json();
+    if(!d||!Array.isArray(d.stocks)||!d.perf)throw new Error("bad data");
+    if(!RH||manual)await loadRanks();
+    const idxChanged=await loadIdx();
+    if(!DATA||d.updatedAt!==DATA.updatedAt||manual){setData(d);renderAll()}
+    else{renderStatus();if(idxChanged){renderIdx();renderPrice()}}
+  }catch(e){
+    if(!DATA){$("empty").textContent=tr("loadFail");$("status").textContent=tr("loadFailShort")}
+    else renderStatus();
+  }finally{loading=false}
+}
+
+/* events */
+document.addEventListener("click",e=>{
+  const p=e.target.closest("[data-p]");if(p){state.period=p.dataset.p;store.set("period",state.period);renderAll();return}
+  const v=e.target.closest("[data-v]");if(v){if(v.dataset.v!==state.view){state.zoom=null;state.ind=null}state.view=v.dataset.v;store.set("view",state.view);renderAll();return}  // a picked sector stays with its tab
+  const rr=e.target.closest("[data-rr]");if(rr){state.rrange=rr.dataset.rr;store.set("rrange",state.rrange);state.rmonth=null;renderControls();renderRanks();return}
+  const rk=e.target.closest("[data-rk]");if(rk){state.rsel=state.rsel===rk.dataset.rk?null:rk.dataset.rk;renderRanks();return}
+  const lo=e.target.closest("[data-lord]");if(lo){state.lorder=lo.dataset.lord;store.set("lorder",state.lorder);renderList();return}
+  const ws=e.target.closest("[data-w]");if(ws){state.wscope=ws.dataset.w;store.set("wscope",state.wscope);renderControls();renderWeights();return}
+  if(e.target.closest("[data-secall]")){if(state.zoom){state.zoom=null;state.ind=null;renderSectors();renderMapOrList()}return}
+  if(e.target.closest("[data-secpick]"))return;
+  const ie=e.target.closest("[data-ind]");if(ie){const sec=STOCKS.find(x=>x.ind===ie.dataset.ind).sec;if(state.zoom!==sec){state.zoom=sec;state.ind=ie.dataset.ind}else state.ind=state.ind===ie.dataset.ind?null:ie.dataset.ind;renderSectors();renderMapOrList();return}
+  const se=e.target.closest("[data-sec]");if(se){state.zoom=state.zoom===se.dataset.sec&&!state.ind?null:se.dataset.sec;state.ind=null;renderSectors();renderMapOrList();if(state.view==="map")$("map").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});return}
+  const itf=e.target.closest("[data-itf]");if(itf){state.itf=itf.dataset.itf;store.set("itf",state.itf);state.ici=null;renderIdx();return}
+  const isc=e.target.closest("[data-isc]");if(isc){state.isc=isc.dataset.isc;store.set("isc",state.isc);renderIdx();return}
+  const ir=e.target.closest("[data-ir]");if(ir){state.irange[state.itf]=ir.dataset.ir;store.set("ir_"+state.itf,ir.dataset.ir);state.ici=null;renderIdx();return}
+  const t=e.target.closest("[data-t]");if(t){const tk=t.dataset.t;state.sel=state.sel===tk?null:tk;$("tip").hidden=true;renderMapOrList();renderDetail();return}
+});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&state.sel){state.sel=null;renderMapOrList();renderDetail()}
+  if((e.key==="Enter"||e.key===" ")&&e.target.classList&&e.target.classList.contains("crow")){e.preventDefault();e.target.click()}
+});
+const tip=$("tip");
+$("map").addEventListener("pointermove",e=>{
+  if(e.pointerType!=="mouse"){tip.hidden=true;return}
+  const t=e.target.closest(".tile");if(!t){tip.hidden=true;return}
+  const s=BY[t.dataset.t];if(!s)return;const v=val(s.t);
+  tip.innerHTML=`<b>${s.t}</b> <span class="num ${cls(v)}" style="font-size:16px;font-weight:700">${fmt(v)}</span><div>${esc(s.name)}</div><div style="color:var(--muted)">${esc(indJa(s.ind))} · ${fmtCap(s.cap)}</div>`;
+  tip.hidden=false;
+  const r=tip.getBoundingClientRect();let x=e.clientX+14,y=e.clientY+14;
+  if(x+r.width>innerWidth-8)x=e.clientX-r.width-14;if(y+r.height>innerHeight-8)y=e.clientY-r.height-14;
+  tip.style.left=x+"px";tip.style.top=y+"px";
+});
+$("map").addEventListener("pointerleave",()=>{tip.hidden=true});
+
+let rt;new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(()=>{if(DATA&&state.view==="map")renderMap();if(DATA&&state.view==="weight"&&!state.zoom)renderRanks();if(DATA&&state.view==="chart")renderIdx()},80)}).observe($("map").parentElement);
+// rank chart: a tap (or click) picks the month, sliding a finger sideways moves it,
+// a vertical swipe scrolls the page and keeps it; a tap outside the chart clears it
+{const rc=$("rchart");let t=null;
+ const at=e=>{const m=rankMonthAt(e.clientX);if(m!=null&&m!==state.rmonth){state.rmonth=m;renderRanks()}};
+ rc.addEventListener("pointerdown",e=>{if(e.target.closest("#rhit"))t={x:e.clientX,y:e.clientY,id:e.pointerId,slide:false}});
+ rc.addEventListener("pointermove",e=>{
+   if(e.pointerType==="mouse"&&!t){if(e.target.closest("#rhit"))at(e);return}
+   if(!t||e.pointerId!==t.id)return;
+   const dx=e.clientX-t.x,dy=e.clientY-t.y;
+   if(!t.slide&&Math.abs(dx)>6&&Math.abs(dx)>Math.abs(dy))t.slide=true;
+   if(t.slide)at(e);
+ });
+ rc.addEventListener("pointerup",e=>{if(t&&e.pointerId===t.id&&(t.slide||Math.hypot(e.clientX-t.x,e.clientY-t.y)<10))at(e);t=null});
+ rc.addEventListener("pointercancel",()=>{t=null});
+ let out=null;
+ document.addEventListener("pointerdown",e=>{out=e.target.closest("#rchart,#ichart,button,a,[data-rk],[data-t]")?null:{x:e.clientX,y:e.clientY,id:e.pointerId}},true);
+ document.addEventListener("pointercancel",()=>{out=null},true);
+ document.addEventListener("pointerup",e=>{const o=out;out=null;
+   if(!o||e.pointerId!==o.id||Math.hypot(e.clientX-o.x,e.clientY-o.y)>=10||(state.rmonth==null&&state.ici==null))return;
+   state.rmonth=null;state.ici=null;if(DATA&&state.view==="weight")renderRanks();if(DATA&&state.view==="chart")renderIdx()},true);}
+// index chart: the same tap / slide / scroll behaviour as the rank chart
+{const el=$("ichart");let t=null;
+ const at=e=>{const g=el._geo,svg=el.querySelector("svg");if(!g||!svg)return;const r=svg.getBoundingClientRect();
+   const i=Math.max(0,Math.min(g.n-1,Math.floor(((e.clientX-r.left)*(svg.viewBox.baseVal.width/r.width)-g.ML)/g.PW*g.n)));
+   if(i!==state.ici){state.ici=i;renderIdx()}};
+ el.addEventListener("pointerdown",e=>{if(e.target.closest(".ihit"))t={x:e.clientX,y:e.clientY,id:e.pointerId,slide:false}});
+ el.addEventListener("pointermove",e=>{
+   if(e.pointerType==="mouse"&&!t){if(e.target.closest(".ihit"))at(e);return}
+   if(!t||e.pointerId!==t.id)return;
+   const dx=e.clientX-t.x,dy=e.clientY-t.y;
+   if(!t.slide&&Math.abs(dx)>6&&Math.abs(dx)>Math.abs(dy))t.slide=true;
+   if(t.slide)at(e);
+ });
+ el.addEventListener("pointerup",e=>{if(t&&e.pointerId===t.id&&(t.slide||Math.hypot(e.clientX-t.x,e.clientY-t.y)<10))at(e);t=null});
+ el.addEventListener("pointercancel",()=>{t=null});}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")load(false)});
+// No refresh button: the data is published every 5 minutes, so the app checks for it every minute
+setInterval(()=>{if(document.visibilityState==="visible")load(false)},60*1000);
+setInterval(()=>{if(DATA)renderStatus()},60*1000);
+
+$("lang").addEventListener("click",e=>{const b=e.target.closest("[data-lang]");if(!b||b.dataset.lang===LANG)return;LANG=b.dataset.lang;try{localStorage.setItem("lang",LANG)}catch(e){}applyLang();renderAll()});
+applyLang();
+renderAll();
+load(false);
+
+</script>
+<script>
+// TQQQ's own tabs live on the TQQQ page
+$("tabs").addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(b)location.href="./?tab="+b.dataset.go});
+</script>
+<script src="../fear-index/suite.js"></script>
+<script>window.Suite&&Suite.foot(".foot.lab");window.Suite&&Suite.mount({hide:["#app","#views","#periods"],after:"#app"})</script>
+</body>
+</html>
