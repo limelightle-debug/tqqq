@@ -374,7 +374,7 @@ def main():
         sys.exit("no holdings")
     tickers = sorted(weights["w"])
     quotes = fetch_quotes(tickers)
-    for t in [t for t in tickers if t not in quotes]:
+    for t in [t for t in tickers if t not in quotes or not quotes[t]["cap"]]:
         try:
             quotes[t] = nasdaq_quote(t)
         except Exception as e:  # noqa: BLE001
