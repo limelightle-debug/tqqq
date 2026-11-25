@@ -140,7 +140,6 @@ tr.hl td{background:var(--chip)}
         <img class="avatar" src="icons/avatar.png" alt="" width="42" height="42">
         <div style="min-width:0">
           <h1>TQQQ</h1>
-          <div class="status" id="status" data-i18n="loading">読み込み中…</div>
         </div>
       </div>
       <span class="tbtns"><div class="langseg" id="lang" role="group" aria-label="Language"><button type="button" data-lang="ja">JP</button><button type="button" data-lang="en">EN</button></div><button type="button" class="refresh" id="refresh" aria-label="Refresh">↻</button></span>
@@ -155,6 +154,7 @@ tr.hl td{background:var(--chip)}
     </div>
   </div>
 
+  <div class="status" id="status" data-i18n="loading" style="margin:10px 0 -2px">読み込み中…</div>
   <div id="app" hidden>
     <div class="price" id="price"></div>
     <div class="peers" id="peers"></div>
@@ -675,7 +675,7 @@ async function liveQuotes(d){
 }
 // When a newer version of the app is published, reload to pick it up (the version is the
 // service worker's cache name; bump both together).
-const APP_VER="tqqq-v26";
+const APP_VER="tqqq-v27";
 async function newerApp(){
   try{const t=await(await fetch("sw.js?ts="+Date.now(),{cache:"no-store"})).text();const m=t.match(/CACHE = "([^"]+)"/);
     // at most one reload per new version, in case the page itself is still served from a cache
@@ -756,6 +756,6 @@ applyLang();renderAll();load(false);
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
 </script>
 <script src="../fear-index/suite.js"></script>
-<script>window.Suite&&Suite.foot(".foot.lab");window.Suite&&Suite.mount({hide:["#app","#tview"],after:"#app"})</script>
+<script>window.Suite&&Suite.foot(".foot.lab");window.Suite&&Suite.mount({hide:["#app","#tview","#status"],after:"#app"})</script>
 </body>
 </html>
